@@ -1,0 +1,3 @@
+﻿# com
+
+Base company namespace.
