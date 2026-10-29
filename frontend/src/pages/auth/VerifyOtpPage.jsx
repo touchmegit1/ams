@@ -110,23 +110,38 @@ function VerifyOtpPage() {
   if (!email) return null;
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="logo">✉️</div>
-        <h1>Xác thực OTP</h1>
+    <div className="auth-container auth-page otp-page">
+      <div className="auth-shell">
+        <aside className="auth-intro" aria-label="Giới thiệu AMS">
+          <div className="auth-brand">AMS <span>·</span> ASSIGNMENT MANAGEMENT</div>
+          <div className="auth-intro-content">
+            <p className="auth-eyebrow">Một bước nữa thôi</p>
+            <h2>Xác thực email,<br />bắt đầu học tập.</h2>
+            <p>Nhập mã được gửi đến hộp thư để hoàn tất tài khoản và truy cập không gian học tập của bạn.</p>
+          </div>
+          <div className="auth-intro-footer">Học tập có tổ chức. Tiến bộ có thể thấy.</div>
+        </aside>
+        <div className="auth-card">
+        <p className="otp-step">BƯỚC 02 / 02</p>
+        <h1>Xác thực email</h1>
         <p className="subtitle">
-          Mã OTP đã được gửi đến<br />
+          Nhập mã gồm 6 chữ số đã gửi đến 
           <strong>{email}</strong>
         </p>
 
         <form onSubmit={handleSubmit}>
+          <label className="otp-label" htmlFor="otp-digit-0">Mã xác thực</label>
           <div className="otp-inputs" onPaste={handlePaste}>
             {otp.map((digit, index) => (
               <input
                 key={index}
+                id={'otp-digit-' + index}
+                aria-label={'Chữ số ' + (index + 1) + ' của mã xác thực'}
+                autoComplete={index === 0 ? 'one-time-code' : 'off'}
                 ref={(el) => (inputRefs.current[index] = el)}
                 type="text"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
@@ -143,17 +158,16 @@ function VerifyOtpPage() {
 
         <div className="resend-otp">
           {canResend ? (
-            <button onClick={handleResend}>Gửi lại mã OTP</button>
+            <button type="button" onClick={handleResend}>Gửi lại mã OTP</button>
           ) : (
-            <span>Gửi lại sau <strong>{countdown}s</strong></span>
+            <span>Chưa nhận được mã? Gửi lại sau <strong>{countdown}s</strong></span>
           )}
         </div>
 
         <p className="auth-footer">
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); }}>
-            ← Quay lại đăng ký
-          </a>
+          <button type="button" className="auth-back-link" onClick={() => navigate('/register')}>Quay lại đăng ký</button>
         </p>
+      </div>
       </div>
     </div>
   );

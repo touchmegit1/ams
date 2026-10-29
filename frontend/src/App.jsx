@@ -32,7 +32,15 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-        <ToastContainer position="top-right" autoClose={3000} />
+        <ToastContainer
+          position="top-right"
+          autoClose={4000}
+          hideProgressBar
+          icon={false}
+          closeOnClick
+          pauseOnHover
+          toastClassName="ams-toast"
+        />
       </AuthProvider>
     </BrowserRouter>
   );

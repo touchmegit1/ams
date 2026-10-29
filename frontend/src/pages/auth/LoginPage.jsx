@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext.jsx';
 import authService from '../../services/authService.js';
 import GoogleLoginButton from '../../components/common/GoogleLoginButton.jsx';
@@ -70,19 +70,28 @@ function LoginPage() {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="logo">📚</div>
+    <div className="auth-container auth-page">
+      <div className="auth-shell">
+        <aside className="auth-intro" aria-label="Giới thiệu AMS">
+          <div className="auth-brand">AMS <span>·</span> ASSIGNMENT MANAGEMENT SYSTEM</div>
+          <div className="auth-intro-content">
+            <p className="auth-eyebrow">Không gian học tập của bạn</p>
+            <h2>Quản lý bài tập<br />rõ ràng hơn mỗi ngày.</h2>
+            <p>Theo dõi tiến độ, nhận thông báo và làm việc cùng lớp trong một nơi.</p>
+          </div>
+          <div className="auth-intro-footer">Học tập có tổ chức. Tiến bộ có thể thấy.</div>
+        </aside>
+        <div className="auth-card">
         <h1>Đăng nhập AMS</h1>
         <p className="subtitle">Assignment Management System</p>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Email</label>
+            <label htmlFor="email">Email</label>
             <div className="input-wrapper">
-              <FiMail className="input-icon" />
               <input
                 type="email"
+                id="email"
                 name="email"
                 placeholder="your@email.com"
                 value={form.email}
@@ -93,11 +102,11 @@ function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu</label>
+            <label htmlFor="password">Mật khẩu</label>
             <div className="input-wrapper">
-              <FiLock className="input-icon" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                id="password"
                 name="password"
                 placeholder="Nhập mật khẩu"
                 value={form.password}
@@ -106,9 +115,10 @@ function LoginPage() {
               <button
                 type="button"
                 className="toggle-password"
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <FiEyeOff /> : <FiEye />}
+                {showPassword ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
               </button>
             </div>
             {errors.password && <p className="form-error">{errors.password}</p>}
@@ -126,6 +136,7 @@ function LoginPage() {
         <p className="auth-footer">
           Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
         </p>
+      </div>
       </div>
     </div>
   );

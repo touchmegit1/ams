@@ -63,7 +63,6 @@ function GoogleLoginButton({ onSuccess }) {
         className="btn btn-google"
         onClick={() => alert('Chưa cấu hình Google Client ID.\n\nTạo file .env ở frontend với:\nVITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com\n\nLấy Client ID từ: https://console.cloud.google.com/apis/credentials')}
       >
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
         Đăng nhập bằng Google
       </button>
     );
