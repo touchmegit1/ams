@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight, FiLogOut } from 'react-icons/fi';
+import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight, FiLogOut, FiUser, FiChevronDown } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const studentSections = [
@@ -22,11 +22,23 @@ function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeId, setActiveId] = useState('home');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const close = (event) => {
+      if (event.key === 'Escape' || (event.type === 'pointerdown' && !menuRef.current?.contains(event.target))) setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close); };
+  }, [menuOpen]);
   const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
   const sections = isTeacher ? teacherSections : studentSections;
   const active = sections.find((section) => section.id === activeId) || sections[0];
   const name = user?.fullName || (isTeacher ? 'Giảng viên' : 'Sinh viên');
-  const initials = name.trim().split(/s+/).map((word) => word[0]).slice(-2).join('').toUpperCase();
+  const initials = name.trim().split(/\s+/).map((word) => word[0]).slice(-2).join('').toUpperCase();
 
   const handleLogout = () => {
     logout();
@@ -46,10 +58,17 @@ function DashboardPage() {
               <button key={id} type="button" className={active.id === id ? 'dashboard-nav-link is-active' : 'dashboard-nav-link'} onClick={() => setActiveId(id)} aria-current={active.id === id ? 'page' : undefined}>{label}</button>
             ))}
           </nav>
-          <div className="dashboard-account">
-            <span className="dashboard-avatar" aria-hidden="true">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</span>
-            <span className="dashboard-account-name">{name}</span>
-            <button className="dashboard-logout" onClick={handleLogout} type="button" aria-label="Đăng xuất"><FiLogOut aria-hidden="true" /><span>Đăng xuất</span></button>
+          <div className="dashboard-account" ref={menuRef}>
+            <button className="dashboard-account-trigger" type="button" aria-label="Mở menu tài khoản" aria-expanded={menuOpen} aria-haspopup="menu" onClick={() => setMenuOpen((open) => !open)}>
+              <span className="dashboard-avatar" aria-hidden="true">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</span>
+              <span className="dashboard-account-label"><span className="dashboard-account-name">{name}</span><span className="dashboard-account-role">{isTeacher ? 'Giảng viên' : 'Sinh viên'}</span></span>
+              <FiChevronDown aria-hidden="true" />
+            </button>
+            {menuOpen && <div className="dashboard-account-menu" role="menu">
+              <div className="dashboard-menu-user"><span className="dashboard-avatar dashboard-menu-avatar" aria-hidden="true">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</span><div><strong>{name}</strong><span>{user?.email}</span></div></div>
+              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/profile'); }}><FiUser aria-hidden="true" /> Hồ sơ</button>
+              <button type="button" role="menuitem" className="dashboard-menu-logout" onClick={handleLogout}><FiLogOut aria-hidden="true" /> Đăng xuất</button>
+            </div>}
           </div>
         </div>
       </header>

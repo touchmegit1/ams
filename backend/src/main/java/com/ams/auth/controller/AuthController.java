@@ -4,12 +4,14 @@ import com.ams.auth.dto.request.GoogleLoginRequest;
 import com.ams.auth.dto.request.LoginRequest;
 import com.ams.auth.dto.request.RegisterRequest;
 import com.ams.auth.dto.request.VerifyOtpRequest;
+import com.ams.auth.dto.request.UpdateProfileRequest;
 import com.ams.auth.dto.response.AuthResponse;
 import com.ams.auth.dto.response.MessageResponse;
 import com.ams.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -68,5 +70,15 @@ public class AuthController {
     public ResponseEntity<AuthResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
         AuthResponse response = authService.googleLogin(request);
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/profile")
+    public ResponseEntity<AuthResponse.UserInfo> getProfile(Authentication authentication) {
+        return ResponseEntity.ok(authService.getProfile((Integer) authentication.getPrincipal()));
+    }
+
+    @PatchMapping("/profile")
+    public ResponseEntity<AuthResponse.UserInfo> updateProfile(Authentication authentication,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(authService.updateProfile((Integer) authentication.getPrincipal(), request));
     }
 }
