@@ -4,6 +4,7 @@ import com.ams.auth.dto.request.GoogleLoginRequest;
 import com.ams.auth.dto.request.LoginRequest;
 import com.ams.auth.dto.request.RegisterRequest;
 import com.ams.auth.dto.request.VerifyOtpRequest;
+import com.ams.auth.dto.request.UpdateProfileRequest;
 import com.ams.auth.dto.response.AuthResponse;
 import com.ams.auth.dto.response.MessageResponse;
 import com.ams.auth.entity.User;
@@ -207,6 +208,27 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Override
+    public AuthResponse.UserInfo getProfile(Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+        return toUserInfo(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse.UserInfo updateProfile(Integer userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+        user.setFullName(request.getFullName().trim());
+        String avatarUrl = request.getAvatarUrl() == null ? "" : request.getAvatarUrl().trim();
+        if (!avatarUrl.isEmpty() && !(avatarUrl.startsWith("https://") || avatarUrl.startsWith("http://"))) {
+            throw new RuntimeException("Ảnh đại diện cần là đường dẫn HTTP hoặc HTTPS");
+        }
+        user.setAvatarUrl(avatarUrl.isEmpty() ? null : avatarUrl);
+        return toUserInfo(userRepository.save(user));
+    }
+
     // ======================== HELPERS ========================
 
     private AuthResponse buildAuthResponse(User user) {
@@ -224,6 +246,17 @@ public class AuthServiceImpl implements AuthService {
                         .avatarUrl(user.getAvatarUrl())
                         .isVerified(user.getIsVerified())
                         .build())
+                .build();
+    }
+
+    private AuthResponse.UserInfo toUserInfo(User user) {
+        return AuthResponse.UserInfo.builder()
+                .userId(user.getUserId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .avatarUrl(user.getAvatarUrl())
+                .isVerified(user.getIsVerified())
                 .build();
     }
 

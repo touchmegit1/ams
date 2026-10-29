@@ -7,6 +7,7 @@ import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import VerifyOtpPage from './pages/auth/VerifyOtpPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
+import ProfilePage from './pages/profile/ProfilePage.jsx';
 
 function App() {
   return (
@@ -27,6 +28,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
           {/* Redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />

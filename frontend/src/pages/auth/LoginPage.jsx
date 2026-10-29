@@ -14,6 +14,7 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
 
   // Nếu đã login → redirect dashboard
   if (isAuthenticated) {
@@ -24,6 +25,7 @@ function LoginPage() {
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: '' });
+    setSubmitError('');
   };
 
   const validate = () => {
@@ -47,7 +49,7 @@ function LoginPage() {
       navigate('/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || 'Đăng nhập thất bại';
-      toast.error(msg);
+      setSubmitError(msg);
 
       // Nếu chưa verify → chuyển sang trang OTP
       if (msg.includes('xác thực OTP')) {
@@ -127,6 +129,7 @@ function LoginPage() {
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? <span className="spinner"></span> : 'Đăng nhập'}
           </button>
+          {submitError && <p className="auth-submit-error" role="alert">{submitError}</p>}
         </form>
 
         <div className="divider"><span>hoặc</span></div>

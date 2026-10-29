@@ -28,6 +28,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem('user', JSON.stringify(userInfo));
   };
 
+  const updateUser = (userInfo) => {
+    setUser(userInfo);
+    localStorage.setItem('user', JSON.stringify(userInfo));
+  };
+
   /** Đăng xuất */
   const logout = () => {
     setToken(null);
@@ -40,7 +45,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = !!token && !!user;
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isAuthenticated, saveAuth, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, isAuthenticated, saveAuth, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );
