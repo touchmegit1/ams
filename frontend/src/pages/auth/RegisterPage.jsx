@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import authService from '../../services/authService.js';
+import { passwordError } from '../../utils/passwordPolicy.js';
+import PasswordRequirements from '../../components/common/PasswordRequirements.jsx';
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -28,8 +30,8 @@ function RegisterPage() {
     if (!form.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên';
     if (!form.email.trim()) newErrors.email = 'Vui lòng nhập email';
     else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Email không hợp lệ';
-    if (!form.password) newErrors.password = 'Vui lòng nhập mật khẩu';
-    else if (form.password.length < 6) newErrors.password = 'Mật khẩu tối thiểu 6 ký tự';
+    const passwordMessage = passwordError(form.password);
+    if (passwordMessage) newErrors.password = passwordMessage;
     if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -42,8 +44,8 @@ function RegisterPage() {
     setLoading(true);
     try {
       const { confirmPassword, ...registerData } = form;
-      await authService.register(registerData);
-      toast.success('Đăng ký thành công! Kiểm tra email để lấy mã OTP.');
+      const res = await authService.register({ ...registerData, email: form.email.trim() });
+      toast.success(res.data.message);
       navigate('/verify-otp', { state: { email: form.email } });
     } catch (err) {
       const data = err.response?.data;
@@ -105,14 +107,7 @@ function RegisterPage() {
             {errors.email && <p className="form-error">{errors.email}</p>}
           </div>
 
-          <div className="form-group">
-            <label htmlFor="role">Vai trò</label>
-            <select id="role"
-                name="role" value={form.role} onChange={handleChange}>
-              <option value="STUDENT">Sinh viên (Student)</option>
-              <option value="TEACHER">Giáo viên (Teacher)</option>
-            </select>
-          </div>
+          <p className="registration-role-note">Đăng ký tài khoản Sinh viên. Tài khoản Giảng viên do người quản trị cấp.</p>
 
           <div className="form-group">
             <label htmlFor="password">Mật khẩu</label>
@@ -121,7 +116,10 @@ function RegisterPage() {
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 name="password"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Nhập mật khẩu mạnh"
+                autoComplete="new-password"
+                maxLength={128}
+                aria-describedby="password-requirements"
                 value={form.password}
                 onChange={handleChange}
               />
@@ -134,7 +132,8 @@ function RegisterPage() {
                 {showPassword ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
               </button>
             </div>
-            {errors.password && <p className="form-error">{errors.password}</p>}
+            <PasswordRequirements value={form.password} />
+            {errors.password && <p className="form-error" role="alert">{errors.password}</p>}
           </div>
 
           <div className="form-group">
@@ -145,6 +144,8 @@ function RegisterPage() {
                 id="confirmPassword"
                 name="confirmPassword"
                 placeholder="Nhập lại mật khẩu"
+                autoComplete="new-password"
+                maxLength={128}
                 value={form.confirmPassword}
                 onChange={handleChange}
               />

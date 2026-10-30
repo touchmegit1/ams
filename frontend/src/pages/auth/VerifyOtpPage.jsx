@@ -14,6 +14,7 @@ function VerifyOtpPage() {
   const email = location.state?.email || '';
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
@@ -95,16 +96,18 @@ function VerifyOtpPage() {
   };
 
   const handleResend = async () => {
+    if (resending || !canResend) return;
+    setResending(true);
     try {
-      await authService.resendOtp(email);
-      toast.success('Đã gửi lại mã OTP! Kiểm tra email.');
+      const res = await authService.resendOtp(email);
+      toast.success(res.data.message);
       setCountdown(60);
       setCanResend(false);
       setOtp(Array(OTP_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Gửi lại OTP thất bại');
-    }
+    } finally { setResending(false); }
   };
 
   if (!email) return null;
@@ -158,7 +161,7 @@ function VerifyOtpPage() {
 
         <div className="resend-otp">
           {canResend ? (
-            <button type="button" onClick={handleResend}>Gửi lại mã OTP</button>
+            <button type="button" onClick={handleResend} disabled={resending || loading}>{resending ? 'Đang gửi…' : 'Gửi lại mã OTP'}</button>
           ) : (
             <span>Chưa nhận được mã? Gửi lại sau <strong>{countdown}s</strong></span>
           )}

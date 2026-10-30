@@ -9,6 +9,7 @@ import com.ams.auth.dto.response.AuthResponse;
 import com.ams.auth.dto.response.MessageResponse;
 
 public interface AuthService {
+    void logout(Integer userId);
 
     /** Đăng ký tài khoản mới — gửi OTP qua email */
     MessageResponse register(RegisterRequest request);

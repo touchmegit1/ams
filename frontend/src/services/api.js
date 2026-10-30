@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getAccessToken, clearSession } from './authSession.js';
 
 const api = axios.create({
   baseURL: '/api',
@@ -10,7 +11,7 @@ const api = axios.create({
 // Tự động gắn JWT token vào mọi request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -24,9 +25,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      clearSession();
     }
     return Promise.reject(error);
   }
