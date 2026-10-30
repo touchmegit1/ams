@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -18,8 +18,7 @@ function LoginPage() {
 
   // Nếu đã login → redirect dashboard
   if (isAuthenticated) {
-    navigate('/dashboard', { replace: true });
-    return null;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleChange = (e) => {
@@ -125,6 +124,10 @@ function LoginPage() {
             </div>
             {errors.password && <p className="form-error">{errors.password}</p>}
           </div>
+
+          <p className="auth-forgot-password">
+            <Link to="/forgot-password" state={{ email: form.email }}>Quên mật khẩu?</Link>
+          </p>
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? <span className="spinner"></span> : 'Đăng nhập'}

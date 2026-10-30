@@ -40,8 +40,8 @@ function DashboardPage() {
   const name = user?.fullName || (isTeacher ? 'Giảng viên' : 'Sinh viên');
   const initials = name.trim().split(/\s+/).map((word) => word[0]).slice(-2).join('').toUpperCase();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

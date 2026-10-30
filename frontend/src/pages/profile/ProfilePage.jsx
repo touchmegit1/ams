@@ -49,7 +49,7 @@ function ProfilePage() {
           <div className="profile-preview"><span className="dashboard-avatar profile-avatar" aria-hidden="true">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : (user?.fullName || 'U').trim().split(/\s+/).map(word => word[0]).slice(-2).join('').toUpperCase()}</span><div><strong>{user?.fullName}</strong><span>{user?.role === 'TEACHER' ? 'Giảng viên' : 'Sinh viên'}</span></div></div>
           <label htmlFor="profile-name">Họ và tên</label><input id="profile-name" value={form.fullName} onChange={event => setForm({ ...form, fullName: event.target.value })} maxLength={100} required />
           <label htmlFor="profile-email">Email</label><input id="profile-email" value={user?.email || ''} readOnly aria-describedby="profile-email-note" /><small id="profile-email-note">Email hiện không thể thay đổi.</small>
-          <label htmlFor="profile-avatar">URL ảnh đại diện</label><input id="profile-avatar" type="url" placeholder="https://example.com/avatar.jpg" value={form.avatarUrl} onChange={event => setForm({ ...form, avatarUrl: event.target.value })} maxLength={500} /><small>Dán liên kết ảnh HTTP hoặc HTTPS, hoặc để trống để dùng chữ viết tắt.</small>
+          <label htmlFor="profile-avatar">URL ảnh đại diện</label><input id="profile-avatar" type="url" placeholder="https://example.com/avatar.jpg" value={form.avatarUrl} onChange={event => setForm({ ...form, avatarUrl: event.target.value })} maxLength={500} /><small>Dán liên kết ảnh HTTPS, hoặc để trống để dùng chữ viết tắt.</small>
           {error && <p className="profile-error" role="alert">{error}</p>}
           <button className="profile-save" type="submit" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
         </form>}

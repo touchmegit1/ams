@@ -469,6 +469,22 @@ a {
 
 /* Auth layout: quiet editorial panel with a clear form surface */
 .auth-page { background: #e9ede8; }
+.auth-forgot-password { text-align: right; margin: -4px 0 20px; font-size: 14px; }
+.password-requirements { list-style: none; margin: 10px 0 0; padding: 0; color: #69756f; font-size: 12px; line-height: 1.7; }
+.password-requirements li.is-met { color: #315b49; }
+.password-requirements span { display: inline-block; width: 14px; }
+.registration-role-note { color: #69756f; font-size: 12px; line-height: 1.6; margin-bottom: 18px; }
+.auth-forgot-password a, .recovery-help a { color: #315b49; font-weight: 600; }
+.recovery-page .recovery-step { color: #68766e; font-size: 11px; font-weight: 700; letter-spacing: .12em; margin-bottom: 18px; }
+.recovery-page .subtitle { line-height: 1.65; }
+.recovery-page .recovery-email { color: #2b4738; overflow-wrap: anywhere; }
+.recovery-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 12px; background: #edf3ee; color: #315b49; font-size: 24px; margin-bottom: 18px; }
+.recovery-note { padding: 16px; background: #f4f7f3; border: 1px solid #dde6dc; border-radius: 8px; color: #526258; font-size: 13px; line-height: 1.65; margin-bottom: 18px; }
+.recovery-note p + p { margin-top: 10px; }
+.recovery-help { color: #69756f; font-size: 12px; line-height: 1.65; margin-top: 22px; }
+.recovery-status { font-size: 13px; color: #315b49; line-height: 1.6; margin-bottom: 14px; }
+.recovery-change-email { border: 0; background: none; color: #315b49; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; margin-top: 18px; text-decoration: underline; text-underline-offset: 3px; }
+.recovery-change-email:disabled { opacity: .6; cursor: not-allowed; }
 .auth-shell {
   display: grid;
   grid-template-columns: minmax(360px, 1fr) minmax(390px, 480px);
