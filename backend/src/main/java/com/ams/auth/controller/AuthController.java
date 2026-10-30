@@ -8,6 +8,10 @@ import com.ams.auth.dto.request.UpdateProfileRequest;
 import com.ams.auth.dto.response.AuthResponse;
 import com.ams.auth.dto.response.MessageResponse;
 import com.ams.auth.service.AuthService;
+import com.ams.auth.service.PasswordResetService;
+import com.ams.auth.dto.request.ForgotPasswordRequest;
+import com.ams.auth.dto.request.ResetPasswordRequest;
+import com.ams.auth.dto.request.ResetTokenRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +25,28 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
+
+    @PostMapping("/logout")
+    public ResponseEntity<MessageResponse> logout(Authentication authentication) {
+        authService.logout((Integer) authentication.getPrincipal());
+        return ResponseEntity.ok(new MessageResponse("Đã đăng xuất các phiên của tài khoản."));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(passwordResetService.requestReset(request.getEmail()));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(passwordResetService.resetPassword(request));
+    }
+
+    @PostMapping("/reset-password/validate")
+    public ResponseEntity<MessageResponse> validateResetToken(@Valid @RequestBody ResetTokenRequest request) {
+        return ResponseEntity.ok(passwordResetService.validateToken(request.getToken()));
+    }
 
     /**
      * POST /api/auth/register
@@ -47,8 +73,8 @@ public class AuthController {
      * Gửi lại mã OTP
      */
     @PostMapping("/resend-otp")
-    public ResponseEntity<MessageResponse> resendOtp(@RequestParam String email) {
-        MessageResponse response = authService.resendOtp(email);
+    public ResponseEntity<MessageResponse> resendOtp(@Valid @RequestBody ForgotPasswordRequest request) {
+        MessageResponse response = authService.resendOtp(request.getEmail());
         return ResponseEntity.ok(response);
     }
 
