@@ -72,10 +72,14 @@ public class User {
     @Builder.Default
     private Boolean isVerified = false;
 
+    @Column(name = "is_enabled", nullable = false)
+    @Builder.Default
+    private Boolean isEnabled = true;
+
     @Column(name = "created_at", updatable = false, insertable = false)
     private LocalDateTime createdAt;
 
     public enum Role {
-        STUDENT, TEACHER
+        STUDENT, TEACHER, ADMIN
     }
 }

@@ -10,6 +10,13 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage.jsx';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import ProfilePage from './pages/profile/ProfilePage.jsx';
+import AdminPage from './pages/admin/AdminPage.jsx';
+import { useAuth } from './context/AuthContext.jsx';
+
+function AdminRoute() {
+  const { user } = useAuth();
+  return user?.role === 'ADMIN' ? <AdminPage /> : <Navigate to="/dashboard" replace />;
+}
 
 function App() {
   return (
@@ -32,6 +39,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/admin" element={<ProtectedRoute><AdminRoute /></ProtectedRoute>} />
 
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 

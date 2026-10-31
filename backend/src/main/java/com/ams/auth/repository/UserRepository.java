@@ -11,9 +11,14 @@ import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
+    @Query("select u from User u where (:role is null or u.role = :role) and (lower(u.fullName) like lower(concat('%', :search, '%')) or lower(u.email) like lower(concat('%', :search, '%')))")
+    Page<User> searchAccounts(@Param("search") String search, @Param("role") User.Role role, Pageable pageable);
+
     @Modifying
     @Transactional
     @Query("update User u set u.otpCode = null where u.otpCode is not null")

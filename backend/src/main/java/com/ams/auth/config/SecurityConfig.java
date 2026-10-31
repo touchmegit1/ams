@@ -55,6 +55,7 @@ public class SecurityConfig {
                     "/api/auth/verify-otp",
                     "/api/auth/resend-otp"
                 ).permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").denyAll()
                 // Tất cả các request khác cần authenticate
                 .anyRequest().authenticated()

@@ -35,6 +35,7 @@ function DashboardPage() {
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close); };
   }, [menuOpen]);
   const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
+  useEffect(() => { if (user?.role === 'ADMIN') navigate('/admin', { replace: true }); }, [user?.role, navigate]);
   const sections = isTeacher ? teacherSections : studentSections;
   const active = sections.find((section) => section.id === activeId) || sections[0];
   const name = user?.fullName || (isTeacher ? 'Giảng viên' : 'Sinh viên');
