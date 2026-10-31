@@ -57,12 +57,17 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").denyAll()
                 // Tất cả các request khác cần authenticate
+                .requestMatchers("/api/assignments/**", "/api/assignment-templates/**", "/api/subjects").hasAnyRole("TEACHER", "ADMIN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, ex) -> {
                 response.setStatus(401);
                 response.setContentType("application/json;charset=UTF-8");
                 response.getWriter().write("{\"message\":\"Phiên đăng nhập không hợp lệ hoặc đã hết hạn.\"}");
+            }).accessDeniedHandler((request, response, ex) -> {
+                response.setStatus(403);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"status\":403,\"message\":\"Bạn không có quyền truy cập\",\"errors\":[]}");
             }))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(new AuthRateLimitFilter(limiter), JwtAuthenticationFilter.class)

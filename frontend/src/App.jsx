@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useLayoutEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './context/AuthContext.jsx';
@@ -10,12 +11,33 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage.jsx';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import ProfilePage from './pages/profile/ProfilePage.jsx';
+import AssignmentLayout from './components/assignments/AssignmentLayout.jsx';
+import AssignmentListPage from './pages/assignments/AssignmentListPage.jsx';
+import AssignmentDetailPage from './pages/assignments/AssignmentDetailPage.jsx';
+import AssignmentFormPage from './pages/assignments/AssignmentFormPage.jsx';
+
+function ApiNavigation() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const forbidden = () => navigate('/forbidden');
+    window.addEventListener('ams:forbidden', forbidden);
+    return () => window.removeEventListener('ams:forbidden', forbidden);
+  }, [navigate]);
+  return null;
+}
+
+function PageMotion({ children }) {
+  const { pathname } = useLocation();
+  useLayoutEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [pathname]);
+  return <div className="ams-page-motion" key={pathname}>{children}</div>;
+}
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
+        <ApiNavigation />
+        <PageMotion><Routes>
           {/* Auth routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -36,9 +58,19 @@ function App() {
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
           {/* Redirect */}
+          <Route path="/teacher" element={<ProtectedRoute><AssignmentLayout /></ProtectedRoute>}>
+            <Route path="assignments" element={<AssignmentListPage />} />
+            <Route path="assignments/new" element={<AssignmentFormPage />} />
+            <Route path="assignments/ai-review" element={<AssignmentFormPage review />} />
+            <Route path="assignments/:id" element={<AssignmentDetailPage />} />
+            <Route path="assignments/:id/edit" element={<AssignmentFormPage />} />
+            <Route path="assignment-templates" element={<AssignmentListPage templates />} />
+            <Route path="assignment-templates/:id" element={<AssignmentDetailPage template />} />
+          </Route>
+          <Route path="/forbidden" element={<div className="assignment-main"><h1>Bạn không có quyền truy cập</h1><a href="/dashboard">Về trang chủ</a></div>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+        </Routes></PageMotion>
         <ToastContainer
           position="top-right"
           autoClose={4000}

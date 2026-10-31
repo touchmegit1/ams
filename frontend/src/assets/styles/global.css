@@ -744,3 +744,16 @@ a {
 .dashboard-account-role { color: #b8d3bf; font-size: 11px; line-height: 1.2; white-space: nowrap; }
 @media (max-width: 1120px) { .dashboard-account-label { display: flex; } .dashboard-account-label .dashboard-account-name { display: block; } }
 @media (max-width: 540px) { .dashboard-account-label { display: none; } }
+
+/* Animate content while keeping workspace navigation visually stable. */
+.ams-page-motion .dashboard-content,.ams-page-motion .assignment-main{animation:ams-page-enter .2s ease-out both}
+@keyframes ams-page-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.ams-page-motion .dashboard-content,.ams-page-motion .assignment-main{animation:none}.assignment-app button,.assignment-app .button,.assignment-app input,.assignment-app select,.assignment-app textarea{transition:none}}
+
+::view-transition-old(root){animation:ams-view-out .16s ease-out both}
+::view-transition-new(root){animation:ams-view-in .2s ease-out both}
+@keyframes ams-view-out{to{opacity:0}}
+@keyframes ams-view-in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}}
+
+html:active-view-transition .ams-page-motion .dashboard-content,html:active-view-transition .ams-page-motion .assignment-main{animation:none}

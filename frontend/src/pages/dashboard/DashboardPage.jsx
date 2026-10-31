@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight, FiLogOut, FiUser, FiChevronDown } from 'react-icons/fi';
+import { useState } from 'react';
+import { useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
+import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight } from 'react-icons/fi';
+import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const studentSections = [
@@ -19,59 +20,20 @@ const teacherSections = [
 ];
 
 function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeId, setActiveId] = useState('home');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const close = (event) => {
-      if (event.key === 'Escape' || (event.type === 'pointerdown' && !menuRef.current?.contains(event.target))) setMenuOpen(false);
-    };
-    document.addEventListener('pointerdown', close);
-    document.addEventListener('keydown', close);
-    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close); };
-  }, [menuOpen]);
-  const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
+  const [activeId, setActiveId] = useState(() => new URLSearchParams(window.location.search).get('section') || 'home');
+  const isTeacher = ['TEACHER', 'ADMIN'].includes(user?.role?.toUpperCase());
+  const openSection = (id) => {
+    if (id === 'assignments' && isTeacher) navigate('/teacher/assignments');
+    else setActiveId(id);
+  };
   const sections = isTeacher ? teacherSections : studentSections;
   const active = sections.find((section) => section.id === activeId) || sections[0];
   const name = user?.fullName || (isTeacher ? 'Giảng viên' : 'Sinh viên');
-  const initials = name.trim().split(/\s+/).map((word) => word[0]).slice(-2).join('').toUpperCase();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div className="dashboard-header-inner">
-          <button className="dashboard-brand" onClick={() => setActiveId('home')} aria-label="AMS - Trang chủ">
-            <span className="dashboard-brand-mark">AMS</span>
-            <span className="dashboard-brand-name">ASSIGNMENT MANAGEMENT SYSTEM</span>
-          </button>
-          <nav className="dashboard-nav" aria-label="Điều hướng chính">
-            {sections.map(({ id, label }) => (
-              <button key={id} type="button" className={active.id === id ? 'dashboard-nav-link is-active' : 'dashboard-nav-link'} onClick={() => setActiveId(id)} aria-current={active.id === id ? 'page' : undefined}>{label}</button>
-            ))}
-          </nav>
-          <div className="dashboard-account" ref={menuRef}>
-            <button className="dashboard-account-trigger" type="button" aria-label="Mở menu tài khoản" aria-expanded={menuOpen} aria-haspopup="menu" onClick={() => setMenuOpen((open) => !open)}>
-              <span className="dashboard-avatar" aria-hidden="true">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</span>
-              <span className="dashboard-account-label"><span className="dashboard-account-name">{name}</span><span className="dashboard-account-role">{isTeacher ? 'Giảng viên' : 'Sinh viên'}</span></span>
-              <FiChevronDown aria-hidden="true" />
-            </button>
-            {menuOpen && <div className="dashboard-account-menu" role="menu">
-              <div className="dashboard-menu-user"><span className="dashboard-avatar dashboard-menu-avatar" aria-hidden="true">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</span><div><strong>{name}</strong><span>{user?.email}</span></div></div>
-              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/profile'); }}><FiUser aria-hidden="true" /> Hồ sơ</button>
-              <button type="button" role="menuitem" className="dashboard-menu-logout" onClick={handleLogout}><FiLogOut aria-hidden="true" /> Đăng xuất</button>
-            </div>}
-          </div>
-        </div>
-      </header>
+      <WorkspaceHeader sections={sections} activeId={active.id} onSelect={openSection} />
 
       <main className="dashboard-content">
         {active.id === 'home' ? (
@@ -86,7 +48,7 @@ function DashboardPage() {
               <div className="dashboard-section-heading"><p>KHÁM PHÁ AMS</p><h2 id="journey-title">{isTeacher ? 'Không gian làm việc của giảng viên' : 'Lộ trình học tập của bạn'}</h2></div>
               <div className="dashboard-steps">
                 {sections.slice(1).map(({ id, label, icon: Icon, description }, index) => (
-                  <button className="dashboard-step" key={id} onClick={() => setActiveId(id)}>
+                  <button className="dashboard-step" key={id} onClick={() => openSection(id)}>
                     <span className="dashboard-step-number">0{index + 1}</span>
                     <span className="dashboard-step-icon"><Icon aria-hidden="true" /></span>
                     <strong>{label}</strong>

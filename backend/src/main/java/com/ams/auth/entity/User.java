@@ -76,6 +76,6 @@ public class User {
     private LocalDateTime createdAt;
 
     public enum Role {
-        STUDENT, TEACHER
+        STUDENT, TEACHER, ADMIN
     }
 }

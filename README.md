@@ -26,6 +26,15 @@ Trên Windows có thể dùng `mvnw.cmd spring-boot:run`. Có thể chạy kiể
 
 Để dùng MySQL, sao chép `backend/.env.example` thành `backend/.env`, điền thông tin kết nối và đặt `SPRING_PROFILE=prod`. File `.env` không được đưa lên Git. Backend đọc các biến kết nối `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; cổng mặc định là `8080` (`SERVER_PORT`). Google OAuth và gửi OTP qua Gmail cần các biến `GOOGLE_CLIENT_ID`, `MAIL_USERNAME`, `MAIL_PASSWORD` tương ứng.
 
+Profile `prod` bắt buộc có `JWT_SECRET`: chuỗi Base64 chứa ít nhất 32 byte ngẫu nhiên. Tạo khóa bằng PowerShell, rồi điền kết quả vào `JWT_SECRET=` trong `backend/.env` và giữ bí mật khóa này:
+
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+[Convert]::ToBase64String($bytes)
+```
+
 `backend/src/main/resources/schema.sql` không được tự động chạy. Script này có thao tác xóa database `ams_db`; hãy xem kỹ trước khi sử dụng.
 
 ## Chạy frontend

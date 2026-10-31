@@ -27,6 +27,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       clearSession();
     }
+    if (error.response?.status === 403) {
+      window.dispatchEvent(new Event('ams:forbidden'));
+    }
     return Promise.reject(error);
   }
 );
