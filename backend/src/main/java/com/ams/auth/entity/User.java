@@ -45,6 +45,29 @@ public class User {
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
 
+    @Column(name = "otp_hash", length = 255)
+    private String otpHash;
+
+    @Column(name = "otp_requested_at")
+    private LocalDateTime otpRequestedAt;
+
+    @Column(name = "otp_attempts", nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default
+    private int otpAttempts = 0;
+
+    @Column(name = "auth_version", nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default
+    private int authVersion = 0;
+
+    @Column(name = "password_reset_token_hash", length = 64, unique = true)
+    private String passwordResetTokenHash;
+
+    @Column(name = "password_reset_expiry")
+    private LocalDateTime passwordResetExpiry;
+
+    @Column(name = "password_reset_requested_at")
+    private LocalDateTime passwordResetRequestedAt;
+
     @Column(name = "is_verified")
     @Builder.Default
     private Boolean isVerified = false;

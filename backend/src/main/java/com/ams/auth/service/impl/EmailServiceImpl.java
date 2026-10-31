@@ -1,7 +1,7 @@
 package com.ams.auth.service.impl;
 
 import com.ams.auth.service.EmailService;
-import jakarta.mail.MessagingException;
+import com.ams.auth.exception.AuthBusinessException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +22,30 @@ public class EmailServiceImpl implements EmailService {
     private String fromEmail;
 
     @Override
-    public void sendOtpEmail(String toEmail, String otpCode) {
-        // Log OTP ra console (backup)
-        log.info("========================================");
-        log.info("  OTP cho {}: {}", toEmail, otpCode);
-        log.info("========================================");
+    public void sendPasswordResetEmail(String toEmail, String resetUrl) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+            helper.setFrom(new InternetAddress(fromEmail, "AMS System"));
+            helper.setTo(toEmail);
+            helper.setSubject("[AMS] Đặt lại mật khẩu");
+            helper.setText("Xin chào,\n\n"
+                    + "Bạn vừa yêu cầu đặt lại mật khẩu tài khoản AMS. Mở liên kết sau:\n"
+                    + resetUrl + "\n\n"
+                    + "Liên kết có hiệu lực trong 30 phút và chỉ được sử dụng một lần.\n"
+                    + "Khi yêu cầu liên kết mới, liên kết cũ sẽ không còn hiệu lực.\n"
+                    + "Nếu bạn không yêu cầu, hãy bỏ qua email này. Mật khẩu của bạn chưa thay đổi.\n\n"
+                    + "Trân trọng,\nAMS Team");
+            mailSender.send(mimeMessage);
+        } catch (Exception ex) {
+            // Never log the reset link or token, including mail exception payloads.
+            log.error("Không thể gửi email đặt lại mật khẩu ({})", ex.getClass().getSimpleName());
+            throw new AuthBusinessException("Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.");
+        }
+    }
 
+    @Override
+    public void sendOtpEmail(String toEmail, String otpCode) {
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
@@ -44,11 +62,10 @@ public class EmailServiceImpl implements EmailService {
             );
 
             mailSender.send(mimeMessage);
-            log.info("Đã gửi OTP qua email từ {} đến {}", fromEmail, toEmail);
 
         } catch (Exception e) {
-            log.error("Lỗi gửi email OTP đến {}: {}", toEmail, e.getMessage(), e);
-            throw new RuntimeException("Không thể gửi email OTP. Vui lòng thử lại sau.");
+            log.error("Không thể gửi email OTP ({})", e.getClass().getSimpleName());
+            throw new AuthBusinessException("Không thể gửi email OTP. Vui lòng thử lại sau.");
         }
     }
 }

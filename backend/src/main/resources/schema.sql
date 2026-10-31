@@ -18,6 +18,13 @@ CREATE TABLE users (
     avatar_url VARCHAR(500) NULL,              -- Ảnh đại diện lấy từ Google Profile
     otp_code VARCHAR(10) NULL,                 -- Mã OTP gửi qua Google Mail (Gmail SMTP)
     otp_expiry DATETIME NULL,                  -- Thời gian hết hạn mã OTP
+    otp_hash VARCHAR(255) NULL,
+    otp_requested_at DATETIME NULL,
+    otp_attempts INT NOT NULL DEFAULT 0,
+    auth_version INT NOT NULL DEFAULT 0,
+    password_reset_token_hash VARCHAR(64) NULL UNIQUE,
+    password_reset_expiry DATETIME NULL,
+    password_reset_requested_at DATETIME NULL,
     is_verified BOOLEAN DEFAULT FALSE,         -- Trạng thái đã xác thực Gmail
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

@@ -1,3 +1,0 @@
-﻿# components
-
-Reusable React components.

@@ -7,11 +7,14 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice(basePackages = "com.ams.auth")
+@Slf4j
 public class AuthExceptionHandler {
 
     /** Xử lý validation errors */
@@ -25,15 +28,27 @@ public class AuthExceptionHandler {
     }
 
     /** Xử lý RuntimeException (business logic errors) */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<MessageResponse> handleRuntimeException(RuntimeException ex) {
+    @ExceptionHandler(AuthBusinessException.class)
+    public ResponseEntity<MessageResponse> handleBusinessException(AuthBusinessException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new MessageResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<MessageResponse> handleRateLimit(RateLimitException ex) {
+        return ResponseEntity.status(429).header("Retry-After", String.valueOf(ex.getRetryAfter()))
+                .body(new MessageResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<MessageResponse> handleMalformedBody(HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest().body(new MessageResponse("Dữ liệu yêu cầu không hợp lệ."));
     }
 
     /** Xử lý tất cả exception khác */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<MessageResponse> handleGenericException(Exception ex) {
+        log.error("Auth request failed ({})", ex.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new MessageResponse("Đã có lỗi xảy ra. Vui lòng thử lại sau."));
     }
