@@ -7,6 +7,9 @@ import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import VerifyOtpPage from './pages/auth/VerifyOtpPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
+import TeacherWorkspaceLayout from './pages/dashboard/TeacherWorkspaceLayout.jsx';
+import CourseManagementPage from './pages/course/CourseManagementPage.jsx';
+import CourseCurriculumPage from './pages/course/CourseCurriculumPage.jsx';
 
 function App() {
   return (
@@ -19,14 +22,11 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
 
           {/* Protected routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<ProtectedRoute><TeacherWorkspaceLayout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/courses" element={<CourseManagementPage />} />
+            <Route path="/courses/:courseId" element={<CourseCurriculumPage />} />
+          </Route>
 
           {/* Redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />

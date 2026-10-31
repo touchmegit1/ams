@@ -30,7 +30,10 @@ CREATE TABLE users (
 CREATE TABLE courses (
     course_id INT AUTO_INCREMENT PRIMARY KEY,
     teacher_id INT NOT NULL,
+    course_code VARCHAR(32) NULL UNIQUE,
     title VARCHAR(200) NOT NULL,
+    subject VARCHAR(120) NULL,
+    target_audience VARCHAR(200) NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     
@@ -38,8 +41,9 @@ CREATE TABLE courses (
     ai_prompt TEXT NULL,                       -- Prompt giáo viên gửi cho Gemini API
     is_ai_generated BOOLEAN DEFAULT FALSE,     -- Đánh dấu khóa học có dùng Gemini gợi ý
     
-    status ENUM('DRAFT', 'PUBLISHED') DEFAULT 'DRAFT',
+    status ENUM('DRAFT', 'PUBLISHED', 'ARCHIVED') DEFAULT 'DRAFT',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (teacher_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
