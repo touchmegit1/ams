@@ -1,3 +1,0 @@
-﻿# ams
-
-AMS project namespace.

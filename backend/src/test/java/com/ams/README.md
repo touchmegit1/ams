@@ -1,3 +1,0 @@
-﻿# ams
-
-AMS test namespace.

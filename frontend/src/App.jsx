@@ -6,7 +6,17 @@ import ProtectedRoute from './components/common/ProtectedRoute.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import VerifyOtpPage from './pages/auth/VerifyOtpPage.jsx';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage.jsx';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
+import ProfilePage from './pages/profile/ProfilePage.jsx';
+import AdminPage from './pages/admin/AdminPage.jsx';
+import { useAuth } from './context/AuthContext.jsx';
+
+function AdminRoute() {
+  const { user } = useAuth();
+  return user?.role === 'ADMIN' ? <AdminPage /> : <Navigate to="/dashboard" replace />;
+}
 
 function App() {
   return (
@@ -17,6 +27,8 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected routes */}
           <Route
@@ -28,11 +40,23 @@ function App() {
             }
           />
 
+          <Route path="/admin" element={<ProtectedRoute><AdminRoute /></ProtectedRoute>} />
+
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
           {/* Redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-        <ToastContainer position="top-right" autoClose={3000} />
+        <ToastContainer
+          position="top-right"
+          autoClose={4000}
+          hideProgressBar
+          icon={false}
+          closeOnClick
+          pauseOnHover
+          toastClassName="ams-toast"
+        />
       </AuthProvider>
     </BrowserRouter>
   );
