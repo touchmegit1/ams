@@ -1,16 +1,17 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService.js';
-import { clearSession, setAccessToken } from '../services/authSession.js';
+import { clearSession, restoreSession, saveSession, updateSessionUser } from '../services/authSession.js';
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [initialSession] = useState(restoreSession);
+  const [user, setUser] = useState(initialSession?.user || null);
+  const [token, setToken] = useState(initialSession?.accessToken || null);
   const [loading, setLoading] = useState(true);
 
-  // Remove credentials from previous app versions. Do not restore untrusted browser storage.
+  // Remove credentials from previous app versions. The current session is tab-scoped.
   useEffect(() => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
@@ -36,11 +37,12 @@ export function AuthProvider({ children }) {
     const { accessToken, user: userInfo } = authResponse;
     setToken(accessToken);
     setUser(userInfo);
-    setAccessToken(accessToken);
+    saveSession(accessToken, userInfo);
   };
 
   const updateUser = (userInfo) => {
     setUser(userInfo);
+    updateSessionUser(userInfo);
   };
 
   /** Đăng xuất */
