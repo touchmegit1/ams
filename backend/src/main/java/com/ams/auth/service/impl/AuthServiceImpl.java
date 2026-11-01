@@ -107,6 +107,7 @@ public class AuthServiceImpl implements AuthService {
         catch (IllegalArgumentException ex) { matches = false; }
         if (user == null || user.getPasswordHash() == null || !matches) throw new AuthBusinessException("Email hoặc mật khẩu không đúng");
         if (!Boolean.TRUE.equals(user.getIsVerified())) throw new AuthBusinessException("Tài khoản chưa được xác thực. Vui lòng xác thực OTP trước.");
+        if (!Boolean.TRUE.equals(user.getIsEnabled())) throw new AuthBusinessException("Tài khoản đã bị khóa.");
         if (passwordEncoder.upgradeEncoding(hash)) user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         return buildAuthResponse(user);
     }

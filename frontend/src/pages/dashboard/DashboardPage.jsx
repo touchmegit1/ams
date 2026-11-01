@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
 import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight } from 'react-icons/fi';
 import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
@@ -23,11 +23,12 @@ function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeId, setActiveId] = useState(() => new URLSearchParams(window.location.search).get('section') || 'home');
-  const isTeacher = ['TEACHER', 'ADMIN'].includes(user?.role?.toUpperCase());
+  const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
   const openSection = (id) => {
     if (id === 'assignments' && isTeacher) navigate('/teacher/assignments');
     else setActiveId(id);
   };
+  useEffect(() => { if (user?.role === 'ADMIN') navigate('/admin', { replace: true }); }, [user?.role, navigate]);
   const sections = isTeacher ? teacherSections : studentSections;
   const active = sections.find((section) => section.id === activeId) || sections[0];
   const name = user?.fullName || (isTeacher ? 'Giảng viên' : 'Sinh viên');

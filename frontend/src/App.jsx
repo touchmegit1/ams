@@ -15,6 +15,8 @@ import AssignmentLayout from './components/assignments/AssignmentLayout.jsx';
 import AssignmentListPage from './pages/assignments/AssignmentListPage.jsx';
 import AssignmentDetailPage from './pages/assignments/AssignmentDetailPage.jsx';
 import AssignmentFormPage from './pages/assignments/AssignmentFormPage.jsx';
+import AdminPage from './pages/admin/AdminPage.jsx';
+import { useAuth } from './context/AuthContext.jsx';
 
 function ApiNavigation() {
   const navigate = useNavigate();
@@ -30,6 +32,11 @@ function PageMotion({ children }) {
   const { pathname } = useLocation();
   useLayoutEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [pathname]);
   return <div className="ams-page-motion" key={pathname}>{children}</div>;
+}
+
+function AdminRoute() {
+  const { user } = useAuth();
+  return user?.role === 'ADMIN' ? <AdminPage /> : <Navigate to="/dashboard" replace />;
 }
 
 function App() {
@@ -54,6 +61,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/admin" element={<ProtectedRoute><AdminRoute /></ProtectedRoute>} />
 
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
