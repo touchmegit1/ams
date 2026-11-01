@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import com.ams.auth.validation.StrongPassword;
+import jakarta.validation.constraints.Pattern;
 
 @Data
 public class RegisterRequest {
@@ -18,9 +20,11 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Mật khẩu không được để trống")
-    @Size(min = 6, max = 50, message = "Mật khẩu từ 6 đến 50 ký tự")
+    @StrongPassword
     private String password;
 
-    /** STUDENT hoặc TEACHER */
+    /** Public registration cannot grant teaching privileges. */
+    @NotBlank(message = "Vai trò không được để trống")
+    @Pattern(regexp = "STUDENT", message = "Đăng ký công khai chỉ dành cho Sinh viên")
     private String role = "STUDENT";
 }

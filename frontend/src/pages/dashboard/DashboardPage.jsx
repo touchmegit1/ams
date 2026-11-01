@@ -1,73 +1,74 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
+import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight } from 'react-icons/fi';
+import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import api from '../../services/api.js';
-import '../../assets/styles/course-management.css';
-import './teacher-dashboard.css';
+
+const studentSections = [
+  { id: 'home', label: 'Trang chủ', icon: FiHome, title: 'Bắt đầu từ đây', description: 'Theo dõi môn học, bài tập và tiến độ học tập trong một không gian.', detail: 'Xem tổng quan và chọn công việc bạn muốn tiếp tục.' },
+  { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Khóa học của bạn', description: 'Khám phá các khóa học, học phần và bài học đang mở.', detail: 'Các khóa học bạn tham gia sẽ xuất hiện tại đây.' },
+  { id: 'enrollment', label: 'Đăng ký học', icon: FiLayers, title: 'Đăng ký khóa học', description: 'Chọn khóa học phù hợp và theo dõi quá trình ghi danh.', detail: 'Thông tin đăng ký và thanh toán sẽ xuất hiện tại đây.' },
+  { id: 'assignments', label: 'Bài tập', icon: FiClipboard, title: 'Bài tập của bạn', description: 'Nộp bài và xem đánh giá để cải thiện từng bước.', detail: 'Bài tập được giao và kết quả đánh giá sẽ xuất hiện tại đây.' },
+];
+
+const teacherSections = [
+  { id: 'home', label: 'Trang chủ', icon: FiHome, title: 'Tổ chức việc giảng dạy', description: 'Quản lý khóa học, nội dung và bài tập môn học tại một nơi.', detail: 'Xem tổng quan và chọn công việc bạn muốn tiếp tục.' },
+  { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Quản lý khóa học', description: 'Sắp xếp khóa học, học phần và bài học cho sinh viên.', detail: 'Các khóa học bạn phụ trách sẽ xuất hiện tại đây.' },
+  { id: 'content', label: 'Học phần', icon: FiLayers, title: 'Học phần & bài học', description: 'Xây dựng lộ trình học tập rõ ràng cho từng môn.', detail: 'Nội dung học phần và bài học sẽ xuất hiện tại đây.' },
+  { id: 'assignments', label: 'Bài tập', icon: FiClipboard, title: 'Quản lý bài tập', description: 'Tạo bài tập môn học và theo dõi kết quả nộp bài.', detail: 'Bài tập đã tạo và bài nộp của sinh viên sẽ xuất hiện tại đây.' },
+  { id: 'students', label: 'Sinh viên', icon: FiUsers, title: 'Sinh viên của bạn', description: 'Theo dõi hoạt động học tập của lớp.', detail: 'Danh sách sinh viên trong các khóa học sẽ xuất hiện tại đây.' },
+];
 
 function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState('');
-  const isManager = user?.role === 'TEACHER' || user?.role === 'ADMIN';
-
-  useEffect(() => {
-    if (!isManager) return;
-    let active = true;
-    setLoading(true);
-    api.get('/courses')
-      .then(({ data }) => { if (active) setCourses(Array.isArray(data) ? data : []); })
-      .catch((error) => { if (active) setLoadError(error.response?.data?.message || 'Could not load your courses.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [isManager]);
-
-  const counts = useMemo(() => ({
-    total: courses.length,
-    published: courses.filter((course) => course.status === 'PUBLISHED').length,
-    draft: courses.filter((course) => course.status === 'DRAFT').length,
-    archived: courses.filter((course) => course.status === 'ARCHIVED').length,
-  }), [courses]);
-  const recentCourses = useMemo(() => [...courses]
-    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
-    .slice(0, 5), [courses]);
-
-  if (isManager) {
-    return (
-      <div className="td-dashboard-content">
-        <div className="td-heading-row">
-          <div><p className="cm-eyebrow">TEACHING WORKSPACE</p><h1>Welcome back, {user?.fullName?.split(' ')[0] || 'teacher'}</h1><p>Manage your courses, curriculum, and publishing status from one place.</p></div>
-          <Link className="cm-button cm-button-primary" to="/courses">＋ Manage courses</Link>
-        </div>
-        {loadError && <div className="cm-alert" role="alert"><span>{loadError}</span><button onClick={() => window.location.reload()}>Retry</button></div>}
-        <section className="td-stats" aria-label="Course summary">
-          <article className="td-stat td-stat-total"><span className="td-stat-icon">▤</span><div><span>Total courses</span><strong>{loading ? '—' : counts.total}</strong></div></article>
-          <article className="td-stat td-stat-published"><span className="td-stat-icon">✓</span><div><span>Published</span><strong>{loading ? '—' : counts.published}</strong></div></article>
-          <article className="td-stat td-stat-draft"><span className="td-stat-icon">✎</span><div><span>Drafts</span><strong>{loading ? '—' : counts.draft}</strong></div></article>
-          <article className="td-stat td-stat-archived"><span className="td-stat-icon">▣</span><div><span>Archived</span><strong>{loading ? '—' : counts.archived}</strong></div></article>
-        </section>
-        <section className="td-main-grid">
-          <div className="cm-panel td-recent-panel">
-            <div className="cm-panel-heading"><div><h2>Recent courses</h2><p>Your latest course updates</p></div><Link className="cm-text-link" to="/courses">View all →</Link></div>
-            {loading ? <div className="cm-loading">Loading your courses…</div> : recentCourses.length === 0 ? (
-              <div className="td-empty"><span className="td-empty-icon">▤</span><h3>No courses yet</h3><p>Create your first course, then add modules and lessons to build its curriculum.</p><Link className="cm-button cm-button-primary" to="/courses">Get started</Link></div>
-            ) : <div className="td-course-list">{recentCourses.map((course) => <article className="td-course-item" key={course.courseId}><div className="td-course-copy"><span className="cm-course-code">{course.courseCode}</span><strong>{course.title}</strong><small>{course.subject || 'No subject'} · Updated {course.updatedAt || course.createdAt ? new Date(course.updatedAt || course.createdAt).toLocaleDateString() : 'recently'}</small></div><span className={`cm-status cm-status-${(course.status || 'DRAFT').toLowerCase()}`}>{course.status || 'DRAFT'}</span><Link className="cm-button cm-button-small" to={`/courses/${course.courseId}`}>Curriculum</Link></article>)}</div>}
-          </div>
-          <aside className="td-side-column">
-            <section className="td-action-card td-guide-card"><span className="td-guide-label">QUICK GUIDE</span><h2>Build your curriculum</h2><ol><li><span>1</span><p>Create or edit a course</p></li><li><span>2</span><p>Add modules in learning order</p></li><li><span>3</span><p>Add lessons and publish when ready</p></li></ol></section>
-          </aside>
-        </section>
-      </div>
-    );
-  }
-
-  const initials = user?.fullName?.split(' ').map((word) => word[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const [activeId, setActiveId] = useState(() => new URLSearchParams(window.location.search).get('section') || 'home');
+  const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
+  const openSection = (id) => {
+    if (isTeacher && (id === 'courses' || id === 'content')) navigate('/courses');
+    else if (id === 'assignments' && isTeacher) navigate('/teacher/assignments');
+    else setActiveId(id);
+  };
+  useEffect(() => { if (user?.role === 'ADMIN') navigate('/admin', { replace: true }); }, [user?.role, navigate]);
+  const sections = isTeacher ? teacherSections : studentSections;
+  const active = sections.find((section) => section.id === activeId) || sections[0];
+  const name = user?.fullName || (isTeacher ? 'Giảng viên' : 'Sinh viên');
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header"><span className="logo-text">📚 AMS</span><div className="user-info"><div className="avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt={user.fullName} /> : initials}</div><div><div style={{ fontWeight: 600, fontSize: 14 }}>{user?.fullName}</div><div style={{ fontSize: 12, color: '#6b7280' }}>{user?.email}</div></div><button className="btn-logout" onClick={() => { logout(); navigate('/login'); }}>Đăng xuất</button></div></header>
-      <main className="dashboard-content"><div className="welcome-card"><h2>Xin chào, {user?.fullName}! 👋</h2><p>Chào mừng bạn đến với Assignment Management System.</p><span className="role-badge">🎓 Sinh viên</span></div></main>
+      <WorkspaceHeader sections={sections} activeId={active.id} onSelect={openSection} />
+
+      <main className="dashboard-content">
+        {active.id === 'home' ? (
+          <div className="dashboard-home">
+            <section className="dashboard-hero">
+              <p className="dashboard-eyebrow">KHÔNG GIAN {isTeacher ? 'GIẢNG DẠY' : 'HỌC TẬP'} CỦA BẠN</p>
+              <h1>Xin chào, {name}.<br /><span>{isTeacher ? 'Cùng xây dựng bài học tốt hơn.' : 'Tiếp tục hành trình học tập.'}</span></h1>
+              <p className="dashboard-hero-copy">{isTeacher ? 'Từ khóa học đến bài tập, mọi công việc giảng dạy đều có một nơi rõ ràng để bắt đầu.' : 'Từ khóa học đến bài tập, mọi bước tiến của bạn đều có một nơi rõ ràng để theo dõi.'}</p>
+              <button className="dashboard-primary-action" onClick={() => openSection('courses')}>Xem khóa học <FiArrowRight aria-hidden="true" /></button>
+            </section>
+            <section className="dashboard-journey" aria-labelledby="journey-title">
+              <div className="dashboard-section-heading"><p>KHÁM PHÁ AMS</p><h2 id="journey-title">{isTeacher ? 'Không gian làm việc của giảng viên' : 'Lộ trình học tập của bạn'}</h2></div>
+              <div className="dashboard-steps">
+                {sections.slice(1).map(({ id, label, icon: Icon, description }, index) => (
+                  <button className="dashboard-step" key={id} onClick={() => openSection(id)}>
+                    <span className="dashboard-step-number">0{index + 1}</span>
+                    <span className="dashboard-step-icon"><Icon aria-hidden="true" /></span>
+                    <strong>{label}</strong>
+                    <span>{description}</span>
+                    <FiArrowRight className="dashboard-step-arrow" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <section className="dashboard-detail" aria-labelledby="dashboard-detail-title">
+            <button className="dashboard-back" onClick={() => setActiveId('home')}>Trang chủ <span aria-hidden="true">/</span> {active.label}</button>
+            <div className="dashboard-detail-heading"><span className="dashboard-detail-icon"><active.icon aria-hidden="true" /></span><p>{isTeacher ? 'KHÔNG GIAN GIẢNG DẠY' : 'KHÔNG GIAN HỌC TẬP'}</p><h1 id="dashboard-detail-title">{active.title}</h1><span>{active.description}</span></div>
+            <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>
+          </section>
+        )}
+      </main>
     </div>
   );
 }
