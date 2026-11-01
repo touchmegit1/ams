@@ -462,6 +462,9 @@ a {
 .auth-page .btn-google { border-radius: 7px; margin-top: 0; }
 .auth-page .divider { color: #78847d; }
 .auth-page .auth-footer a { color: #315b49; }
+.auth-page .auth-role-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0 0 24px; background: #eef2ee; border: 1px solid #dce5dd; border-radius: 9px; }
+.auth-page .auth-role-choice button { min-height: 42px; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: #56675d; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.auth-page .auth-role-choice button.is-selected { background: #315b49; color: #fff; box-shadow: 0 1px 3px rgba(25, 54, 39, .18); }
 @media (max-width: 480px) {
   .auth-page { align-items: flex-start; padding: 28px 16px; }
   .auth-page .auth-card { padding: 28px 22px; }

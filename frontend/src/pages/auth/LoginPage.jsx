@@ -8,17 +8,18 @@ import GoogleLoginButton from '../../components/common/GoogleLoginButton.jsx';
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { saveAuth, isAuthenticated } = useAuth();
+  const { saveAuth, isAuthenticated, user } = useAuth();
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
+  const [adminMode, setAdminMode] = useState(false);
 
   // Nếu đã login → redirect dashboard
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/dashboard'} replace />;
   }
 
   const handleChange = (e) => {
@@ -43,9 +44,17 @@ function LoginPage() {
     setLoading(true);
     try {
       const res = await authService.login(form);
+      if (adminMode && res.data.user?.role !== 'ADMIN') {
+        setSubmitError('Tài khoản này không có quyền Admin.');
+        return;
+      }
+      if (!adminMode && res.data.user?.role === 'ADMIN') {
+        setSubmitError('Vui lòng chọn Admin để đăng nhập.');
+        return;
+      }
       saveAuth(res.data);
       toast.success('Đăng nhập thành công!');
-      navigate('/dashboard');
+      navigate(res.data.user?.role === 'ADMIN' ? '/admin' : '/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || 'Đăng nhập thất bại';
       setSubmitError(msg);
@@ -64,7 +73,7 @@ function LoginPage() {
       const res = await authService.googleLogin(idToken);
       saveAuth(res.data);
       toast.success('Đăng nhập Google thành công!');
-      navigate('/dashboard');
+      navigate(res.data.user?.role === 'ADMIN' ? '/admin' : '/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Đăng nhập Google thất bại');
     }
@@ -83,8 +92,16 @@ function LoginPage() {
           <div className="auth-intro-footer">Học tập có tổ chức. Tiến bộ có thể thấy.</div>
         </aside>
         <div className="auth-card">
-        <h1>Đăng nhập AMS</h1>
+        <h1>{adminMode ? 'Đăng nhập Admin' : 'Đăng nhập AMS'}</h1>
         <p className="subtitle">Assignment Management System</p>
+        <div className="auth-role-choice" role="group" aria-label="Chọn vai trò đăng nhập">
+          <button type="button" className={!adminMode ? 'is-selected' : ''} aria-pressed={!adminMode} onClick={() => { setAdminMode(false); setSubmitError(''); }}>
+            Sinh viên / Giảng viên
+          </button>
+          <button type="button" className={adminMode ? 'is-selected' : ''} aria-pressed={adminMode} onClick={() => { setAdminMode(true); setSubmitError(''); }}>
+            Admin
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -135,13 +152,11 @@ function LoginPage() {
           {submitError && <p className="auth-submit-error" role="alert">{submitError}</p>}
         </form>
 
-        <div className="divider"><span>hoặc</span></div>
-
-        <GoogleLoginButton onSuccess={handleGoogleSuccess} />
-
-        <p className="auth-footer">
-          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
-        </p>
+        {!adminMode && <>
+          <div className="divider"><span>hoặc</span></div>
+          <GoogleLoginButton onSuccess={handleGoogleSuccess} />
+          <p className="auth-footer">Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link></p>
+        </>}
       </div>
       </div>
     </div>
