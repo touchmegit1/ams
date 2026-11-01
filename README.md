@@ -35,9 +35,27 @@ try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
 [Convert]::ToBase64String($bytes)
 ```
 
-Để có MySQL và dữ liệu test từ đầu, chạy duy nhất `backend/db/ams_demo.sql` bằng MySQL Workbench hoặc `mysql -u root -p < backend/db/ams_demo.sql`. Script **xóa rồi tạo lại toàn bộ `ams_db`**; chỉ dùng trên database local không cần giữ dữ liệu. Spring Boot không tự chạy file này. Đặt `SPRING_PROFILE=prod` và cấu hình `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` trong `backend/.env` để backend dùng MySQL.
+### Tạo MySQL và dữ liệu mẫu để test
 
-Dữ liệu mẫu gồm tài khoản admin, giảng viên, sinh viên; khóa miễn phí `AMS-FREE-101`, khóa trả phí 100.000đ `AMS-PAID-201`, một khóa nháp, học phần, bài học và bài tập mẫu. Sinh viên chưa đăng ký khóa nào để có thể thử cả hai luồng. Cả ba tài khoản mẫu dùng mật khẩu `Admin@123`.
+1. Mở `backend/db/ams_demo.sql` bằng MySQL Workbench và chạy toàn bộ file trên MySQL local. File này **xóa rồi tạo lại toàn bộ `ams_db`**. Chỉ dùng trên database thử nghiệm không cần giữ dữ liệu; Spring Boot không tự chạy SQL.
+2. Sao chép `backend/.env.example` thành `backend/.env`. Điền `SPRING_PROFILE=prod`, `DB_URL=jdbc:mysql://localhost:3306/ams_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC`, `DB_USERNAME`, `DB_PASSWORD` và `JWT_SECRET` như hướng dẫn phía trên.
+3. Từ thư mục `backend`, chạy `./mvnw spring-boot:run` (Windows: `.\mvnw.cmd spring-boot:run`), rồi chạy frontend theo mục tiếp theo.
+
+File SQL duy nhất tạo 3 tài khoản, 2 khóa đã xuất bản, 1 khóa nháp, học phần, bài học và bài tập mẫu. Sinh viên chưa đăng ký khóa nào để bạn thử luồng mới.
+
+| Vai trò | Email | Mật khẩu |
+| --- | --- | --- |
+| Admin | `admin@gmail.com` | `Admin@123` |
+| Giảng viên | `teacher@gmail.com` | `Admin@123` |
+| Sinh viên | `student@gmail.com` | `Admin@123` |
+
+Đăng nhập bằng sinh viên, vào **Khóa học** hoặc **Đăng ký học** trên dashboard:
+
+- `AMS-FREE-101` (0đ): nhấn **Đăng ký khóa học**; trạng thái chuyển `ACTIVE` và xem được nội dung bài học ngay.
+- `AMS-PAID-201` (100.000đ): nhấn **Đăng ký khóa học**; hệ thống tạo mã chuyển khoản và QR có hạn 5 giờ. Muốn tạo QR, backend cần `SEPAY_BANK` và `SEPAY_ACCOUNT_NUMBER` trong `.env`. Dùng tài khoản ngân hàng của bạn, không dùng thông tin giả để chuyển tiền.
+- `AMS-DRAFT-301`: chỉ giảng viên nhìn thấy; sinh viên không thể đăng ký.
+
+Để xác nhận thanh toán tự động, liên kết tài khoản ngân hàng với SePay, khai báo `SEPAY_ORDER_PREFIX=AMS` và `SEPAY_WEBHOOK_SECRET`, rồi cấu hình webhook HMAC-SHA256 đến `https://<backend-host>/api/webhooks/sepay`. Backend cần URL HTTPS công khai; localhost không nhận được webhook thật. Chi tiết ở `docs/sepay-enrollment.md`. Giao dịch sai hoặc đến muộn xuất hiện tại **Đối soát thanh toán** trong trang admin.
 
 ## Chạy frontend
 
@@ -67,6 +85,4 @@ Trang quản trị ở `/admin` cho phép tìm kiếm, lọc, đổi vai trò v�
 
 Với H2 trong bộ nhớ và profile `dev`, backend tự tạo tài khoản này khi khởi động. Dữ liệu H2 sẽ mất khi dừng backend và được tạo lại ở lần chạy sau.
 
-### Tạo dữ liệu mẫu trên MySQL
-
-Chạy `backend/db/ams_demo.sql` trên MySQL local mới. File tạo sẵn `admin@gmail.com`, `teacher@gmail.com` và `student@gmail.com`, cùng các khóa học và nội dung mẫu. Không chạy file này trên database đang có dữ liệu cần giữ.
+Tài khoản mẫu chỉ dành cho môi trường local. Đổi mật khẩu trước khi đưa ứng dụng ra môi trường dùng thật.
