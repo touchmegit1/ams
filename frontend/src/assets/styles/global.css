@@ -760,3 +760,24 @@ a {
 @media(prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}}
 
 html:active-view-transition .ams-page-motion .dashboard-content,html:active-view-transition .ams-page-motion .assignment-main{animation:none}
+
+/* Published courses in the student workspace */
+.student-courses { padding: 30px 0 70px; }
+.student-courses-count { margin-bottom: 18px; color: #607168; font-size: 13px; }
+.student-courses-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.student-course-card { display: flex; flex-direction: column; min-width: 0; padding: 24px; border: 1px solid #d7e1d9; border-radius: 12px; background: #fff; }
+.student-course-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 22px; border-radius: 9px; background: #e9f1ea; color: #315b49; font-size: 21px; }
+.student-course-code { color: #47705a; font-size: 11px; font-weight: 800; letter-spacing: .05em; }
+.student-course-main h2 { margin: 9px 0; color: #1d2b25; font-size: 22px; letter-spacing: -.03em; }
+.student-course-main p { color: #607168; font-size: 14px; line-height: 1.6; }
+.student-course-audience { display: inline-block; margin-top: 14px; color: #47705a; font-size: 12px; }
+.student-course-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: auto; padding-top: 24px; }
+.student-course-footer strong { color: #1d2b25; font-size: 14px; }
+.student-course-footer button, .student-courses-message button { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #b8d1be; border-radius: 7px; background: #fff; color: #315b49; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.student-course-footer button:hover, .student-courses-message button:hover { background: #f4f8f5; }
+.student-course-modules { display: grid; gap: 11px; margin-top: 20px; padding-top: 18px; border-top: 1px solid #e3eae4; }
+.student-course-modules > div { display: flex; align-items: start; justify-content: space-between; gap: 14px; font-size: 13px; }
+.student-course-modules strong { color: #2b3c31; }
+.student-course-modules span, .student-course-modules p { color: #68786e; }
+.student-courses-message { display: grid; justify-items: start; gap: 14px; padding: 35px 0; color: #607168; }
+@media (max-width: 760px) { .student-courses-grid { grid-template-columns: 1fr; } }

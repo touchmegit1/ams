@@ -4,13 +4,10 @@ import { toast } from 'react-toastify';
 import api from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import CourseForm from '../../components/course/CourseForm.jsx';
+import { courseStatusLabel, formatCoursePrice } from './courseUi.js';
 import '../../assets/styles/course-management.css';
 
-const errorMessage = (error) => error.response?.data?.message || 'Something went wrong. Please try again.';
-const money = (value) => Number(value || 0) === 0
-  ? 'Free'
-  : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
-
+const errorMessage = (error) => error.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';
 function CourseManagementPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -98,9 +95,9 @@ function CourseManagementPage() {
       else await api.post('/courses', payload);
       setShowForm(false);
       await loadCourses();
-      toast.success(editingCourse ? 'Course updated' : 'Course created');
+      toast.success(editingCourse ? 'Đã cập nhật khóa học' : 'Đã tạo khóa học');
     } catch (error) {
-      const message = error.response?.data?.message || 'Could not save this course';
+      const message = error.response?.data?.message || 'Không thể lưu khóa học';
       setSubmitError(message);
     } finally {
       setSaving(false);
@@ -108,11 +105,11 @@ function CourseManagementPage() {
   };
 
   const deleteCourse = async (course) => {
-    if (!window.confirm(`Delete “${course.title}” and all of its modules and lessons?`)) return;
+    if (!window.confirm(`Xóa khóa học “${course.title}” cùng toàn bộ học phần và bài học?`)) return;
     try {
       await api.delete(`/courses/${course.courseId}`);
       setCourses((current) => current.filter((item) => item.courseId !== course.courseId));
-      toast.success('Course deleted');
+      toast.success('Đã xóa khóa học');
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -123,7 +120,7 @@ function CourseManagementPage() {
   if (!isManager) {
     return (
       <main className="cm-page">
-        <section className="cm-empty-state"><h1>Course management is for teachers</h1><p>Your account can’t manage courses.</p><Link to="/dashboard" className="cm-button cm-button-primary">Back to dashboard</Link></section>
+        <section className="cm-empty-state"><h1>Quản lý khóa học dành cho giảng viên</h1><p>Tài khoản của bạn không có quyền quản lý khóa học.</p><Link to="/dashboard" className="cm-button cm-button-primary">Về tổng quan</Link></section>
       </main>
     );
   }
@@ -131,58 +128,58 @@ function CourseManagementPage() {
   return (
     <main className="cm-page">
       <div className="cm-container">
-        <div className="cm-breadcrumb"><Link to="/dashboard">Overview</Link><span>/</span><strong>Courses</strong></div>
+        <div className="cm-breadcrumb"><Link to="/dashboard">Tổng quan</Link><span>/</span><strong>Khóa học</strong></div>
         <section className="cm-page-heading">
           <div>
-            <p className="cm-eyebrow">TEACHING WORKSPACE</p>
-            <h1>Courses &amp; Curriculum Management</h1>
-            <p>Manage courses and build their modules and lessons.</p>
+            <p className="cm-eyebrow">KHÔNG GIAN GIẢNG DẠY</p>
+            <h1>Quản lý khóa học</h1>
+            <p>Tạo khóa học, sắp xếp học phần và quản lý bài học.</p>
           </div>
-          <button className="cm-button cm-button-primary" onClick={openCreate}>＋ Create course</button>
+          <button className="cm-button cm-button-primary" onClick={openCreate}>＋ Tạo khóa học</button>
         </section>
 
-        <section className="cm-toolbar cm-course-filters" aria-label="Course filters">
-          <label className="cm-search"><span aria-hidden="true">⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search course code, title, or scope" /></label>
-          <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="ALL">All statuses</option><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option>
+        <section className="cm-toolbar cm-course-filters" aria-label="Bộ lọc khóa học">
+          <label className="cm-search"><span aria-hidden="true">⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo mã, tên hoặc mô tả khóa học" /></label>
+          <select aria-label="Lọc theo trạng thái" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="ALL">Tất cả trạng thái</option><option value="DRAFT">Bản nháp</option><option value="PUBLISHED">Đã xuất bản</option><option value="ARCHIVED">Đã lưu trữ</option>
           </select>
-          <select aria-label="Filter by subject" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
-            <option value="ALL">All subjects</option>{subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
+          <select aria-label="Lọc theo môn học" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
+            <option value="ALL">Tất cả môn học</option>{subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
           </select>
-          {(search || statusFilter !== 'ALL' || subjectFilter !== 'ALL') && <button className="cm-button cm-button-quiet" onClick={() => { setSearch(''); setStatusFilter('ALL'); setSubjectFilter('ALL'); }}>Reset</button>}
+          {(search || statusFilter !== 'ALL' || subjectFilter !== 'ALL') && <button className="cm-button cm-button-quiet" onClick={() => { setSearch(''); setStatusFilter('ALL'); setSubjectFilter('ALL'); }}>Đặt lại</button>}
         </section>
 
-        {loadError && <div className="cm-alert" role="alert"><span>{loadError}</span><button onClick={loadCourses}>Retry</button></div>}
+        {loadError && <div className="cm-alert" role="alert"><span>{loadError}</span><button onClick={loadCourses}>Thử lại</button></div>}
         <section className="cm-panel">
-          <div className="cm-panel-heading"><div><h2>Your courses</h2><p>{loading ? 'Loading…' : `Showing ${visibleCourses.length ? (currentPage - 1) * pageSize + 1 : 0}–${Math.min(currentPage * pageSize, visibleCourses.length)} of ${visibleCourses.length} matching courses`}</p></div><label className="cm-page-size">Rows per page<select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option></select></label></div>
-          {loading ? <div className="cm-loading">Loading your courses…</div> : visibleCourses.length === 0 ? (
-            <div className="cm-empty-state"><div className="cm-empty-icon">▤</div><h3>{courses.length ? 'No matching courses' : 'Start with your first course'}</h3><p>{courses.length ? 'Try another search or status filter.' : 'Add course details, then build its modules and lessons manually.'}</p>{!courses.length && <button className="cm-button cm-button-primary" onClick={openCreate}>Create a course</button>}</div>
+          <div className="cm-panel-heading"><div><h2>Khóa học của bạn</h2><p>{loading ? 'Đang tải…' : `Hiển thị ${visibleCourses.length ? (currentPage - 1) * pageSize + 1 : 0}–${Math.min(currentPage * pageSize, visibleCourses.length)} / ${visibleCourses.length} khóa học`}</p></div><label className="cm-page-size">Số dòng mỗi trang<select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option></select></label></div>
+          {loading ? <div className="cm-loading">Đang tải khóa học…</div> : visibleCourses.length === 0 ? (
+            <div className="cm-empty-state"><div className="cm-empty-icon">▤</div><h3>{courses.length ? 'Không tìm thấy khóa học' : 'Bắt đầu với khóa học đầu tiên'}</h3><p>{courses.length ? 'Thử từ khóa hoặc bộ lọc khác.' : 'Thêm thông tin khóa học, sau đó tạo học phần và bài học.'}</p>{!courses.length && <button className="cm-button cm-button-primary" onClick={openCreate}>Tạo khóa học</button>}</div>
           ) : (
             <div className="cm-table-wrap">
               <table className="cm-table cm-course-table">
-                <thead><tr><th>Course code</th><th>Course title &amp; scope</th><th>Structure</th><th>Price</th><th>Status</th><th>Last updated</th><th><span className="sr-only">Actions</span></th></tr></thead>
+                <thead><tr><th>Mã khóa học</th><th>Tên và mô tả khóa học</th><th>Cấu trúc</th><th>Học phí</th><th>Trạng thái</th><th>Cập nhật gần nhất</th><th><span className="sr-only">Thao tác</span></th></tr></thead>
                 <tbody>{pageCourses.map((course) => (
                   <tr key={course.courseId}>
                     <td><strong className="cm-code-value">{course.courseCode}</strong></td>
-                    <td><div className="cm-course-name"><Link className="cm-course-title-link" to={`/courses/${course.courseId}`}>{course.title}</Link><small>{course.description || course.subject || 'No scope provided yet'}{course.targetAudience ? ` · ${course.targetAudience}` : ''}</small></div></td>
-                    <td>{structures[course.courseId]?.modules == null ? '—' : <><strong>{structures[course.courseId].modules} {structures[course.courseId].modules === 1 ? 'Module' : 'Modules'}</strong><small className="cm-subline">{structures[course.courseId].lessons} Lessons</small></>}</td>
-                    <td>{money(course.price)}</td>
-                    <td><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{course.status}</span></td>
-                    <td>{course.updatedAt ? new Date(course.updatedAt).toLocaleDateString() : course.createdAt ? new Date(course.createdAt).toLocaleDateString() : '—'}</td>
-                    <td><div className="cm-row-actions"><button className="cm-button cm-button-small" onClick={() => navigate(`/courses/${course.courseId}`)}>Curriculum</button><button className="cm-button cm-button-small cm-button-quiet" onClick={() => openEdit(course)}>Edit</button><button className="cm-button cm-button-small cm-button-danger" onClick={() => deleteCourse(course)}>Delete</button></div></td>
+                    <td><div className="cm-course-name"><Link className="cm-course-title-link" to={`/courses/${course.courseId}`}>{course.title}</Link><small>{course.description || course.subject || 'Chưa có mô tả'}{course.targetAudience ? ` · ${course.targetAudience}` : ''}</small></div></td>
+                    <td>{structures[course.courseId]?.modules == null ? '—' : <><strong>{structures[course.courseId].modules} học phần</strong><small className="cm-subline">{structures[course.courseId].lessons} bài học</small></>}</td>
+                    <td>{formatCoursePrice(course.price)}</td>
+                    <td><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{courseStatusLabel[course.status] || course.status}</span></td>
+                    <td>{course.updatedAt ? new Date(course.updatedAt).toLocaleDateString('vi-VN') : course.createdAt ? new Date(course.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
+                    <td><div className="cm-row-actions"><button className="cm-button cm-button-small" onClick={() => navigate(`/courses/${course.courseId}`)}>Chương trình học</button><button className="cm-button cm-button-small cm-button-quiet" onClick={() => openEdit(course)}>Sửa</button><button className="cm-button cm-button-small cm-button-danger" onClick={() => deleteCourse(course)}>Xóa</button></div></td>
                   </tr>
                 ))}</tbody>
               </table>
             </div>
           )}
-          {!loading && visibleCourses.length > 0 && <nav className="cm-pagination" aria-label="Course pages">
-            <span>Page {currentPage} of {totalPages}</span>
+          {!loading && visibleCourses.length > 0 && <nav className="cm-pagination" aria-label="Các trang khóa học">
+            <span>Trang {currentPage} / {totalPages}</span>
             <div className="cm-pagination-controls">
-              <button className="cm-button cm-button-small" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} aria-label="First page">«</button>
-              <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>Previous</button>
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} aria-label="Trang đầu">«</button>
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>Trước</button>
               {pageNumbers.map((page) => typeof page === 'string' ? <span className="cm-page-gap" key={page}>…</span> : <button key={page} className={`cm-button cm-button-small cm-page-number${currentPage === page ? ' active' : ''}`} onClick={() => setCurrentPage(page)} aria-current={currentPage === page ? 'page' : undefined}>{page}</button>)}
-              <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages}>Next</button>
-              <button className="cm-button cm-button-small" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} aria-label="Last page">»</button>
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages}>Tiếp</button>
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} aria-label="Trang cuối">»</button>
             </div>
           </nav>}
         </section>

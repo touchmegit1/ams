@@ -3,9 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api.js';
 import CourseForm from '../../components/course/CourseForm.jsx';
+import { courseStatusLabel, formatCoursePrice } from './courseUi.js';
 import '../../assets/styles/course-management.css';
 
-const errorMessage = (error) => error.response?.data?.message || 'Something went wrong. Please try again.';
+const errorMessage = (error) => error.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';
 
 function CurriculumModal({ title, initial, kind, onClose, onSubmit, saving, submitError }) {
   const isLesson = kind === 'lesson';
@@ -23,17 +24,17 @@ function CurriculumModal({ title, initial, kind, onClose, onSubmit, saving, subm
       if (event.target === event.currentTarget) onClose();
     }}>
       <section className="cm-modal" role="dialog" aria-modal="true" aria-labelledby="curriculum-form-title">
-        <header className="cm-modal-header"><div><p className="cm-eyebrow">CURRICULUM</p><h2 id="curriculum-form-title">{title}</h2></div><button className="cm-icon-button" type="button" onClick={onClose} aria-label="Close">×</button></header>
+        <header className="cm-modal-header"><div><p className="cm-eyebrow">CHƯƠNG TRÌNH HỌC</p><h2 id="curriculum-form-title">{title}</h2></div><button className="cm-icon-button" type="button" onClick={onClose} aria-label="Đóng">×</button></header>
         <form onSubmit={handleSubmit}>
           <div className="cm-modal-body">
-            <label className="cm-field"><span>{isLesson ? 'Lesson title' : 'Module title'} <b>*</b></span><input name="title" required maxLength="200" defaultValue={initial?.title || ''} autoFocus placeholder={isLesson ? 'Name this lesson' : 'Name this module'} /></label>
+            <label className="cm-field"><span>{isLesson ? 'Tên bài học' : 'Tên học phần'} <b>*</b></span><input name="title" required maxLength="200" defaultValue={initial?.title || ''} autoFocus placeholder={isLesson ? 'Nhập tên bài học' : 'Nhập tên học phần'} /></label>
             {isLesson && <>
-              <label className="cm-field"><span>Lesson content</span><textarea name="content" maxLength="100000" rows="8" defaultValue={initial?.content || ''} placeholder="Write lesson notes or instructions here." /></label>
-              <label className="cm-field"><span>Video URL</span><input name="videoUrl" type="url" maxLength="500" defaultValue={initial?.videoUrl || ''} placeholder="https://…" /></label>
+              <label className="cm-field"><span>Nội dung bài học</span><textarea name="content" maxLength="100000" rows="8" defaultValue={initial?.content || ''} placeholder="Viết nội dung hoặc hướng dẫn cho bài học." /></label>
+              <label className="cm-field"><span>Liên kết video</span><input name="videoUrl" type="url" maxLength="500" defaultValue={initial?.videoUrl || ''} placeholder="https://…" /></label>
             </>}
             {submitError && <p className="cm-form-error" role="alert">{submitError}</p>}
           </div>
-          <footer className="cm-modal-footer"><button className="cm-button cm-button-quiet" type="button" onClick={onClose} disabled={saving}>Cancel</button><button className="cm-button cm-button-primary" type="submit" disabled={saving}>{saving ? 'Saving…' : initial ? 'Save changes' : `Add ${isLesson ? 'lesson' : 'module'}`}</button></footer>
+          <footer className="cm-modal-footer"><button className="cm-button cm-button-quiet" type="button" onClick={onClose} disabled={saving}>Hủy</button><button className="cm-button cm-button-primary" type="submit" disabled={saving}>{saving ? 'Đang lưu…' : initial ? 'Lưu thay đổi' : `Thêm ${isLesson ? 'bài học' : 'học phần'}`}</button></footer>
         </form>
       </section>
     </div>
@@ -78,7 +79,7 @@ function CourseCurriculumPage() {
       await api.put(`/courses/${courseId}`, payload);
       setCourseFormOpen(false);
       await load();
-      toast.success('Course updated');
+      toast.success('Đã cập nhật khóa học');
     } catch (error) {
       setSubmitError(errorMessage(error));
     } finally {
@@ -101,7 +102,7 @@ function CourseCurriculumPage() {
       }
       setCurriculumForm(null);
       await load();
-      toast.success('Curriculum saved');
+      toast.success('Đã lưu chương trình học');
     } catch (error) {
       setSubmitError(errorMessage(error));
     } finally {
@@ -110,22 +111,22 @@ function CourseCurriculumPage() {
   };
 
   const removeModule = async (module) => {
-    if (!window.confirm(`Delete “${module.title}” and all of its lessons?`)) return;
+    if (!window.confirm(`Xóa học phần “${module.title}” cùng toàn bộ bài học?`)) return;
     try {
       await api.delete(`/courses/${courseId}/modules/${module.moduleId}`);
       await load();
-      toast.success('Module deleted');
+      toast.success('Đã xóa học phần');
     } catch (error) {
       toast.error(errorMessage(error));
     }
   };
 
   const removeLesson = async (module, lesson) => {
-    if (!window.confirm(`Delete lesson “${lesson.title}”?`)) return;
+    if (!window.confirm(`Xóa bài học “${lesson.title}”?`)) return;
     try {
       await api.delete(`/courses/${courseId}/modules/${module.moduleId}/lessons/${lesson.lessonId}`);
       await load();
-      toast.success('Lesson deleted');
+      toast.success('Đã xóa bài học');
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -155,62 +156,62 @@ function CourseCurriculumPage() {
 
   const totalLessons = modules.reduce((total, module) => total + module.lessons.length, 0);
 
-  if (loading) return <main className="cm-page"><div className="cm-loading cm-page-loading">Loading course…</div></main>;
-  if (loadError || !course) return <main className="cm-page"><div className="cm-container"><div className="cm-alert" role="alert"><span>{loadError || 'Course not found'}</span><button onClick={() => navigate('/courses')}>Back to courses</button></div></div></main>;
+  if (loading) return <main className="cm-page"><div className="cm-loading cm-page-loading">Đang tải khóa học…</div></main>;
+  if (loadError || !course) return <main className="cm-page"><div className="cm-container"><div className="cm-alert" role="alert"><span>{loadError || 'Không tìm thấy khóa học'}</span><button onClick={() => navigate('/courses')}>Về danh sách khóa học</button></div></div></main>;
 
   return (
     <main className="cm-page">
       <div className="cm-container">
-        <div className="cm-breadcrumb"><Link to="/courses">Courses</Link><span>/</span><strong>{course.courseCode}</strong><span>/</span><strong>Modules &amp; Lessons</strong></div>
+        <div className="cm-breadcrumb"><Link to="/courses">Khóa học</Link><span>/</span><strong>{course.courseCode}</strong><span>/</span><strong>Học phần và bài học</strong></div>
         <section className="cm-course-hero">
           <div>
             <p className="cm-eyebrow">{course.courseCode} · {course.subject}</p>
-            <div className="cm-hero-title"><h1>{course.title}</h1><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{course.status}</span></div>
-            <p>{course.description || 'Add a description to explain what students will learn.'}</p>
-            {course.targetAudience && <p className="cm-audience">For {course.targetAudience}</p>}
+            <div className="cm-hero-title"><h1>{course.title}</h1><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{courseStatusLabel[course.status] || course.status}</span></div>
+            <p>{course.description || 'Thêm mô tả để sinh viên biết nội dung khóa học.'}</p>
+            {course.targetAudience && <p className="cm-audience">Dành cho {course.targetAudience}</p>}
           </div>
         </section>
 
         <section className="cm-stats-row">
-          <div className="cm-stat"><span>Modules</span><strong>{modules.length}</strong></div>
-          <div className="cm-stat"><span>Lessons</span><strong>{totalLessons}</strong></div>
-          <div className="cm-stat"><span>Price</span><strong>{Number(course.price) === 0 ? 'Free' : new Intl.NumberFormat('vi-VN').format(course.price) + ' VND'}</strong></div>
-          <div className="cm-stat"><span>Course status</span><strong>{course.status}</strong></div>
+          <div className="cm-stat"><span>Học phần</span><strong>{modules.length}</strong></div>
+          <div className="cm-stat"><span>Bài học</span><strong>{totalLessons}</strong></div>
+          <div className="cm-stat"><span>Học phí</span><strong>{formatCoursePrice(course.price)}</strong></div>
+          <div className="cm-stat"><span>Trạng thái khóa học</span><strong>{courseStatusLabel[course.status] || course.status}</strong></div>
         </section>
 
         <div className="cm-curriculum-layout">
         <section className="cm-panel cm-curriculum-panel">
-          <div className="cm-panel-heading"><div><h2>Course curriculum</h2><p>Arrange modules and add lesson material by hand.</p></div><button className="cm-button cm-button-primary" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module: null }); }}>＋ Add module</button></div>
+          <div className="cm-panel-heading"><div><h2>Chương trình học</h2><p>Sắp xếp học phần và thêm nội dung cho từng bài học.</p></div><button className="cm-button cm-button-primary" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module: null }); }}>＋ Thêm học phần</button></div>
           {modules.length === 0 ? (
-            <div className="cm-empty-state"><div className="cm-empty-icon">▤</div><h3>No modules yet</h3><p>Add the first module to start building this course.</p><button className="cm-button cm-button-primary" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module: null }); }}>Add first module</button></div>
+            <div className="cm-empty-state"><div className="cm-empty-icon">▤</div><h3>Chưa có học phần</h3><p>Tạo học phần đầu tiên để xây dựng khóa học.</p><button className="cm-button cm-button-primary" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module: null }); }}>Thêm học phần đầu tiên</button></div>
           ) : (
             <div className="cm-module-list">
               {modules.map((module, moduleIndex) => (
                 <article className="cm-module-card" key={module.moduleId}>
                   <header className="cm-module-header">
                     <div className="cm-module-number">{String(moduleIndex + 1).padStart(2, '0')}</div>
-                    <div className="cm-module-title"><h3>{module.title}</h3><span>{module.lessons.length} {module.lessons.length === 1 ? 'lesson' : 'lessons'}</span></div>
+                    <div className="cm-module-title"><h3>{module.title}</h3><span>{module.lessons.length} bài học</span></div>
                     <div className="cm-row-actions">
-                      <button className="cm-icon-button" aria-label="Move module up" disabled={moduleIndex === 0} onClick={() => moveModule(moduleIndex, -1)}>↑</button>
-                      <button className="cm-icon-button" aria-label="Move module down" disabled={moduleIndex === modules.length - 1} onClick={() => moveModule(moduleIndex, 1)}>↓</button>
-                      <button className="cm-button cm-button-small cm-button-quiet" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module }); }}>Edit</button>
-                      <button className="cm-button cm-button-small cm-button-danger" onClick={() => removeModule(module)}>Delete</button>
+                      <button className="cm-icon-button" aria-label="Đưa học phần lên" disabled={moduleIndex === 0} onClick={() => moveModule(moduleIndex, -1)}>↑</button>
+                      <button className="cm-icon-button" aria-label="Đưa học phần xuống" disabled={moduleIndex === modules.length - 1} onClick={() => moveModule(moduleIndex, 1)}>↓</button>
+                      <button className="cm-button cm-button-small cm-button-quiet" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module }); }}>Sửa</button>
+                      <button className="cm-button cm-button-small cm-button-danger" onClick={() => removeModule(module)}>Xóa</button>
                     </div>
                   </header>
                   <div className="cm-lesson-list">
                     {module.lessons.map((lesson, lessonIndex) => (
                       <div className="cm-lesson-row" key={lesson.lessonId}>
                         <div className="cm-lesson-number">{moduleIndex + 1}.{lessonIndex + 1}</div>
-                        <div className="cm-lesson-main"><strong>{lesson.title}</strong>{lesson.content && <p>{lesson.content}</p>}{lesson.videoUrl && <a href={lesson.videoUrl} target="_blank" rel="noreferrer">Open lesson video ↗</a>}</div>
+                        <div className="cm-lesson-main"><strong>{lesson.title}</strong>{lesson.content && <p>{lesson.content}</p>}{lesson.videoUrl && <a href={lesson.videoUrl} target="_blank" rel="noreferrer">Mở video bài học ↗</a>}</div>
                         <div className="cm-row-actions">
-                          <button className="cm-icon-button" aria-label="Move lesson up" disabled={lessonIndex === 0} onClick={() => moveLesson(module, lessonIndex, -1)}>↑</button>
-                          <button className="cm-icon-button" aria-label="Move lesson down" disabled={lessonIndex === module.lessons.length - 1} onClick={() => moveLesson(module, lessonIndex, 1)}>↓</button>
-                          <button className="cm-button cm-button-small cm-button-quiet" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'lesson', module, lesson }); }}>Edit</button>
-                          <button className="cm-button cm-button-small cm-button-danger" onClick={() => removeLesson(module, lesson)}>Delete</button>
+                          <button className="cm-icon-button" aria-label="Đưa bài học lên" disabled={lessonIndex === 0} onClick={() => moveLesson(module, lessonIndex, -1)}>↑</button>
+                          <button className="cm-icon-button" aria-label="Đưa bài học xuống" disabled={lessonIndex === module.lessons.length - 1} onClick={() => moveLesson(module, lessonIndex, 1)}>↓</button>
+                          <button className="cm-button cm-button-small cm-button-quiet" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'lesson', module, lesson }); }}>Sửa</button>
+                          <button className="cm-button cm-button-small cm-button-danger" onClick={() => removeLesson(module, lesson)}>Xóa</button>
                         </div>
                       </div>
                     ))}
-                    <button className="cm-add-lesson" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'lesson', module, lesson: null }); }}>＋ Add lesson to {module.title}</button>
+                    <button className="cm-add-lesson" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'lesson', module, lesson: null }); }}>＋ Thêm bài học vào {module.title}</button>
                   </div>
                 </article>
               ))}
@@ -218,14 +219,14 @@ function CourseCurriculumPage() {
           )}
         </section>
         <aside className="cm-inspector">
-          <section className="cm-inspector-card"><h2>Course hierarchy</h2><dl><div><dt>Course code</dt><dd>{course.courseCode}</dd></div><div><dt>Status</dt><dd><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{course.status}</span></dd></div><div><dt>Total modules</dt><dd>{modules.length}</dd></div><div><dt>Total lessons</dt><dd>{totalLessons}</dd></div><div><dt>Subject</dt><dd>{course.subject || '—'}</dd></div><div><dt>Price</dt><dd>{Number(course.price) === 0 ? 'Free' : new Intl.NumberFormat('vi-VN').format(course.price) + ' VND'}</dd></div></dl></section>
-          <section className="cm-inspector-card"><h2>Course actions</h2><button className="cm-inspector-action" onClick={() => { setSubmitError(''); setCourseFormOpen(true); }}>Edit course settings</button><Link className="cm-inspector-action" to="/courses">Back to course list</Link></section>
+          <section className="cm-inspector-card"><h2>Thông tin khóa học</h2><dl><div><dt>Mã khóa học</dt><dd>{course.courseCode}</dd></div><div><dt>Trạng thái</dt><dd><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{courseStatusLabel[course.status] || course.status}</span></dd></div><div><dt>Tổng học phần</dt><dd>{modules.length}</dd></div><div><dt>Tổng bài học</dt><dd>{totalLessons}</dd></div><div><dt>Môn học</dt><dd>{course.subject || '—'}</dd></div><div><dt>Học phí</dt><dd>{formatCoursePrice(course.price)}</dd></div></dl></section>
+          <section className="cm-inspector-card"><h2>Thao tác khóa học</h2><button className="cm-inspector-action" onClick={() => { setSubmitError(''); setCourseFormOpen(true); }}>Sửa thông tin khóa học</button><Link className="cm-inspector-action" to="/courses">Về danh sách khóa học</Link></section>
         </aside>
         </div>
       </div>
 
       {courseFormOpen && <CourseForm initialCourse={course} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} saving={saving} submitError={submitError} />}
-      {curriculumForm && <CurriculumModal kind={curriculumForm.kind} initial={curriculumForm.module && curriculumForm.kind === 'module' ? curriculumForm.module : curriculumForm.lesson} title={`${curriculumForm.module || curriculumForm.lesson ? 'Edit' : 'Add'} ${curriculumForm.kind}`} onClose={() => setCurriculumForm(null)} onSubmit={submitCurriculum} saving={saving} submitError={submitError} />}
+      {curriculumForm && <CurriculumModal kind={curriculumForm.kind} initial={curriculumForm.module && curriculumForm.kind === 'module' ? curriculumForm.module : curriculumForm.lesson} title={`${curriculumForm.module || curriculumForm.lesson ? 'Sửa' : 'Thêm'} ${curriculumForm.kind === 'module' ? 'học phần' : 'bài học'}`} onClose={() => setCurriculumForm(null)} onSubmit={submitCurriculum} saving={saving} submitError={submitError} />}
     </main>
   );
 }

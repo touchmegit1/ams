@@ -2,6 +2,7 @@ package com.ams.coursemgmt.controller;
 
 import com.ams.coursemgmt.dto.request.CourseRequest;
 import com.ams.coursemgmt.dto.response.CourseResponse;
+import com.ams.coursemgmt.dto.response.ModuleResponse;
 import com.ams.coursemgmt.service.CourseManagementService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,16 @@ public class CourseController {
     @GetMapping
     public List<CourseResponse> list(Authentication authentication) {
         return courseService.listCourses(actorId(authentication));
+    }
+
+    @GetMapping("/published")
+    public List<CourseResponse> listPublished() {
+        return courseService.listPublishedCourses();
+    }
+
+    @GetMapping("/published/{courseId}/modules")
+    public List<ModuleResponse> listPublishedModules(@PathVariable Integer courseId) {
+        return courseService.listPublishedModules(courseId);
     }
 
     @PostMapping

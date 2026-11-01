@@ -54,6 +54,26 @@ public class CourseManagementService {
     }
 
     @Transactional(readOnly = true)
+    public List<CourseResponse> listPublishedCourses() {
+        return courseRepository.findAllByStatusOrderByCreatedAtDesc(CourseStatus.PUBLISHED)
+                .stream().map(CourseResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ModuleResponse> listPublishedModules(Integer courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        if (course.getStatus() != CourseStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
+        }
+        return moduleRepository.findAllByCourse_CourseIdOrderByOrderIndexAscModuleIdAsc(courseId).stream()
+                .map(module -> ModuleResponse.from(module,
+                        lessonRepository.findAllByModule_ModuleIdOrderByOrderIndexAscLessonIdAsc(module.getModuleId())
+                                .stream().map(LessonResponse::from).toList()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public CourseResponse getCourse(Integer actorId, Integer courseId) {
         return CourseResponse.from(requireCourse(actorId, courseId));
     }

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
 import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight } from 'react-icons/fi';
 import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
+import StudentCourses from './StudentCourses.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const studentSections = [
   { id: 'home', label: 'Trang chủ', icon: FiHome, title: 'Bắt đầu từ đây', description: 'Theo dõi môn học, bài tập và tiến độ học tập trong một không gian.', detail: 'Xem tổng quan và chọn công việc bạn muốn tiếp tục.' },
-  { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Khóa học của bạn', description: 'Khám phá các khóa học, học phần và bài học đang mở.', detail: 'Các khóa học bạn tham gia sẽ xuất hiện tại đây.' },
+  { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Khóa học đang mở', description: 'Khám phá các khóa học đã xuất bản cùng nội dung học phần.', detail: 'Các khóa học đã xuất bản sẽ xuất hiện tại đây.' },
   { id: 'enrollment', label: 'Đăng ký học', icon: FiLayers, title: 'Đăng ký khóa học', description: 'Chọn khóa học phù hợp và theo dõi quá trình ghi danh.', detail: 'Thông tin đăng ký và thanh toán sẽ xuất hiện tại đây.' },
   { id: 'assignments', label: 'Bài tập', icon: FiClipboard, title: 'Bài tập của bạn', description: 'Nộp bài và xem đánh giá để cải thiện từng bước.', detail: 'Bài tập được giao và kết quả đánh giá sẽ xuất hiện tại đây.' },
 ];
@@ -65,7 +66,7 @@ function DashboardPage() {
           <section className="dashboard-detail" aria-labelledby="dashboard-detail-title">
             <button className="dashboard-back" onClick={() => setActiveId('home')}>Trang chủ <span aria-hidden="true">/</span> {active.label}</button>
             <div className="dashboard-detail-heading"><span className="dashboard-detail-icon"><active.icon aria-hidden="true" /></span><p>{isTeacher ? 'KHÔNG GIAN GIẢNG DẠY' : 'KHÔNG GIAN HỌC TẬP'}</p><h1 id="dashboard-detail-title">{active.title}</h1><span>{active.description}</span></div>
-            <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>
+            {!isTeacher && active.id === 'courses' ? <StudentCourses /> : <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>}
           </section>
         )}
       </main>
