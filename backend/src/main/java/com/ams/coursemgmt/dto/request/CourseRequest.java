@@ -14,6 +14,6 @@ public record CourseRequest(
         @NotBlank @Size(max = 120) String subject,
         @Size(max = 200) String targetAudience,
         @Size(max = 10000) String description,
-        @DecimalMin("0.00") @Digits(integer = 8, fraction = 2) BigDecimal price,
+        @DecimalMin("0.00") @Digits(integer = 8, fraction = 0) BigDecimal price,
         CourseStatus status
 ) {}

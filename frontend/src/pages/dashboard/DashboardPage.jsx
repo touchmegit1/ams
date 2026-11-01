@@ -66,7 +66,7 @@ function DashboardPage() {
           <section className="dashboard-detail" aria-labelledby="dashboard-detail-title">
             <button className="dashboard-back" onClick={() => setActiveId('home')}>Trang chủ <span aria-hidden="true">/</span> {active.label}</button>
             <div className="dashboard-detail-heading"><span className="dashboard-detail-icon"><active.icon aria-hidden="true" /></span><p>{isTeacher ? 'KHÔNG GIAN GIẢNG DẠY' : 'KHÔNG GIAN HỌC TẬP'}</p><h1 id="dashboard-detail-title">{active.title}</h1><span>{active.description}</span></div>
-            {!isTeacher && active.id === 'courses' ? <StudentCourses /> : <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>}
+            {!isTeacher && (active.id === 'courses' || active.id === 'enrollment') ? <StudentCourses /> : <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>}
           </section>
         )}
       </main>

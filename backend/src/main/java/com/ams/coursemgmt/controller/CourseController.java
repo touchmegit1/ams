@@ -33,8 +33,8 @@ public class CourseController {
     }
 
     @GetMapping("/published/{courseId}/modules")
-    public List<ModuleResponse> listPublishedModules(@PathVariable Integer courseId) {
-        return courseService.listPublishedModules(courseId);
+    public List<ModuleResponse> listPublishedModules(Authentication authentication, @PathVariable Integer courseId) {
+        return courseService.listPublishedModules(actorId(authentication), courseId);
     }
 
     @PostMapping

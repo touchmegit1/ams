@@ -64,7 +64,7 @@ public class AssignmentService {
     public Map<String,Object> detail(Integer id,Authentication auth) {
         Assignment a=owned(id,auth); Map<String,Object> result=view(a);
         if(a.getStatus()!=Status.DRAFT) {
-            result.put("enrolledCount",countIfAvailable("enrollments","select count(distinct student_id) from enrollments where course_id = ? and payment_status = 'PAID'",a.getSubjectId()));
+            result.put("enrolledCount",countIfAvailable("course_enrollments","select count(distinct student_id) from course_enrollments where course_id = ? and status = 'ACTIVE'",a.getSubjectId()));
             result.put("submissionCount",countIfAvailable("submissions","select count(distinct student_id) from submissions where assignment_id = ?",a.getId()));
         }
         return result;

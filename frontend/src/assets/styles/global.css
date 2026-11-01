@@ -781,3 +781,9 @@ html:active-view-transition .ams-page-motion .dashboard-content,html:active-view
 .student-course-modules span, .student-course-modules p { color: #68786e; }
 .student-courses-message { display: grid; justify-items: start; gap: 14px; padding: 35px 0; color: #607168; }
 @media (max-width: 760px) { .student-courses-grid { grid-template-columns: 1fr; } }
+.student-payment { margin: 1rem; padding: 1rem; border: 1px solid #d9e4df; border-radius: 12px; background: #f6faf8; }
+.student-payment img { display: block; width: min(240px, 100%); height: auto; margin: 1rem auto; }
+.student-payment p { margin: .5rem 0; overflow-wrap: anywhere; }
+.student-enrollment-active, .student-enrollment-expired { margin: .75rem 1rem; font-weight: 600; }
+.student-enrollment-active { color: #176749; }
+.student-enrollment-expired { color: #9b5212; }

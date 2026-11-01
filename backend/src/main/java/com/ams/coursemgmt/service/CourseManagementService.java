@@ -15,6 +15,8 @@ import com.ams.coursemgmt.entity.Lesson;
 import com.ams.coursemgmt.repository.CourseModuleRepository;
 import com.ams.coursemgmt.repository.CourseRepository;
 import com.ams.coursemgmt.repository.LessonRepository;
+import com.ams.enrollment.entity.EnrollmentStatus;
+import com.ams.enrollment.repository.EnrollmentRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,15 +35,17 @@ public class CourseManagementService {
     private final CourseModuleRepository moduleRepository;
     private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public CourseManagementService(CourseRepository courseRepository,
                                    CourseModuleRepository moduleRepository,
                                    LessonRepository lessonRepository,
-                                   UserRepository userRepository) {
+                                   UserRepository userRepository, EnrollmentRepository enrollmentRepository) {
         this.courseRepository = courseRepository;
         this.moduleRepository = moduleRepository;
         this.lessonRepository = lessonRepository;
         this.userRepository = userRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @Transactional(readOnly = true)
@@ -60,16 +64,18 @@ public class CourseManagementService {
     }
 
     @Transactional(readOnly = true)
-    public List<ModuleResponse> listPublishedModules(Integer courseId) {
+    public List<ModuleResponse> listPublishedModules(Integer actorId, Integer courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
-        if (course.getStatus() != CourseStatus.PUBLISHED) {
+        boolean enrolled = enrollmentRepository.existsByStudent_UserIdAndCourse_CourseIdAndStatus(actorId, courseId, EnrollmentStatus.ACTIVE);
+        if (course.getStatus() != CourseStatus.PUBLISHED && !enrolled) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
         }
         return moduleRepository.findAllByCourse_CourseIdOrderByOrderIndexAscModuleIdAsc(courseId).stream()
                 .map(module -> ModuleResponse.from(module,
                         lessonRepository.findAllByModule_ModuleIdOrderByOrderIndexAscLessonIdAsc(module.getModuleId())
-                                .stream().map(LessonResponse::from).toList()))
+                                .stream().map(lesson -> enrolled ? LessonResponse.from(lesson)
+                                        : new LessonResponse(lesson.getLessonId(), lesson.getTitle(), null, null, lesson.getOrderIndex())).toList()))
                 .toList();
     }
 
@@ -112,6 +118,9 @@ public class CourseManagementService {
     @Transactional
     public void deleteCourse(Integer actorId, Integer courseId) {
         Course course = requireCourse(actorId, courseId);
+        if (enrollmentRepository.existsByCourse_CourseId(courseId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Course has enrollment history; archive it instead");
+        }
         for (CourseModule module : moduleRepository.findAllByCourse_CourseIdOrderByOrderIndexAscModuleIdAsc(courseId)) {
             lessonRepository.deleteAllByModule_ModuleId(module.getModuleId());
         }

@@ -35,7 +35,9 @@ try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
 [Convert]::ToBase64String($bytes)
 ```
 
-`backend/src/main/resources/schema.sql` không được tự động chạy. Script này có thao tác xóa database `ams_db`; hãy xem kỹ trước khi sử dụng.
+Để có MySQL và dữ liệu test từ đầu, chạy duy nhất `backend/db/ams_demo.sql` bằng MySQL Workbench hoặc `mysql -u root -p < backend/db/ams_demo.sql`. Script **xóa rồi tạo lại toàn bộ `ams_db`**; chỉ dùng trên database local không cần giữ dữ liệu. Spring Boot không tự chạy file này. Đặt `SPRING_PROFILE=prod` và cấu hình `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` trong `backend/.env` để backend dùng MySQL.
+
+Dữ liệu mẫu gồm tài khoản admin, giảng viên, sinh viên; khóa miễn phí `AMS-FREE-101`, khóa trả phí 100.000đ `AMS-PAID-201`, một khóa nháp, học phần, bài học và bài tập mẫu. Sinh viên chưa đăng ký khóa nào để có thể thử cả hai luồng. Cả ba tài khoản mẫu dùng mật khẩu `Admin@123`.
 
 ## Chạy frontend
 
@@ -65,11 +67,6 @@ Trang quản trị ở `/admin` cho phép tìm kiếm, lọc, đổi vai trò v�
 
 Với H2 trong bộ nhớ và profile `dev`, backend tự tạo tài khoản này khi khởi động. Dữ liệu H2 sẽ mất khi dừng backend và được tạo lại ở lần chạy sau.
 
-### Tạo tài khoản mẫu trên MySQL hiện có
+### Tạo dữ liệu mẫu trên MySQL
 
-1. Sao lưu database trước khi thay đổi cấu trúc bảng `users`.
-2. Mở MySQL Workbench (hoặc công cụ SQL đang dùng), kết nối đến database của ứng dụng và chọn database bằng `USE ams_db;` nếu cần.
-3. Mở file `backend/src/main/resources/admin-migration.sql` và chạy toàn bộ file **một lần**. File này thêm vai trò `ADMIN`, cột `is_enabled` và tạo tài khoản mẫu với mật khẩu đã băm BCrypt. Nếu email mẫu đã tồn tại, câu lệnh cuối cập nhật mật khẩu và làm hết hiệu lực các phiên cũ.
-4. Khởi động lại backend, đăng nhập bằng thông tin ở bảng trên, rồi mở `/admin`.
-
-Không chạy lại hai câu `ALTER TABLE` nếu đã áp dụng migration vì cột `is_enabled` đã tồn tại. Nếu chỉ cần đặt lại mật khẩu tài khoản mẫu, chạy riêng câu `UPDATE users SET password_hash = ... WHERE email = 'admin@gmail.com'` ở cuối file SQL. Hãy đổi mật khẩu mẫu trước khi dùng ngoài môi trường phát triển.
+Chạy `backend/db/ams_demo.sql` trên MySQL local mới. File tạo sẵn `admin@gmail.com`, `teacher@gmail.com` và `student@gmail.com`, cùng các khóa học và nội dung mẫu. Không chạy file này trên database đang có dữ liệu cần giữ.

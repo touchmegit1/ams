@@ -56,6 +56,8 @@ public class SecurityConfig {
                     "/api/auth/resend-otp"
                 ).permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/webhooks/sepay").permitAll()
+                .requestMatchers("/api/enrollments/**", "/api/enrollments").hasRole("STUDENT")
                 .requestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").denyAll()
                 // Tất cả các request khác cần authenticate
                 .requestMatchers("/api/assignments/**", "/api/assignment-templates/**", "/api/subjects").hasAnyRole("TEACHER", "ADMIN")

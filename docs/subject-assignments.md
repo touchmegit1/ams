@@ -11,14 +11,9 @@ Giao diện dùng API thật và JWT của module đăng nhập hiện có.
   hoặc tự cấp quyền TEACHER/ADMIN. Nếu dropdown trống, cần dữ liệu từ module Course.
 - Giữ thông tin MySQL thực tế trong `backend/.env`. Dùng `SPRING_PROFILE=dev`
   khi frontend chạy ở HTTP localhost. Dev vẫn dùng DB_URL trong `.env`.
-- Khi nâng cấp database theo schema cũ, chạy thủ công
-  `backend/db/migrations/V20261031_01__subject_assignments.sql` **một lần trước
-  khi khởi động backend mới**. Không chạy lại nếu Hibernate đã thêm các cột.
-  Dự án hiện dùng `ddl-auto=update`; script không tự chạy và không dùng Flyway.
-  Database mới có thể được Hibernate tạo các bảng cần cho module này; bảng của
-  Enrollment và Submission do các module tương ứng cung cấp.
-- `backend/db/seed_assignment_template.sql` cung cấp một mẫu dùng chung khi đã
-  có tài khoản ADMIN. Chạy thủ công nếu cần mẫu ban đầu.
+- Với MySQL test từ đầu, chạy duy nhất `backend/db/ams_demo.sql` để tạo schema,
+  tài khoản, khóa học, bài học và mẫu bài tập. Script **xóa toàn bộ `ams_db`**;
+  không dùng để nâng cấp database đang có dữ liệu. Dự án không dùng Flyway.
 - Rubric lưu JSON trong `assignments.grading_rubric`, gồm criteria, description,
   weight. Dữ liệu rubric dạng text cũ cần chuyển đổi thủ công; không tự ghi đè.
 - Để dùng AI, thêm `GEMINI_API_KEY=...` vào backend/.env. Có thể chọn model bằng
@@ -43,7 +38,7 @@ Giao diện dùng API thật và JWT của module đăng nhập hiện có.
   không tăng khi sửa bài.
 - Mốc dueDate dùng local datetime nhất quán với các bảng hiện có. Frontend và
   backend triển khai cần dùng cùng múi giờ (hiện tại Asia/Saigon).
-- Đếm ghi danh từ enrollments (payment_status=PAID), đếm sinh viên đã nộp từ
+- Đếm ghi danh từ course_enrollments (status=ACTIVE), đếm sinh viên đã nộp từ
   submissions. Nếu chưa có bảng, API trả null và UI ghi “Chưa kết nối”.
 - Bàn giao Huy: bảng assignments với status=PUBLISHED, course_id, grading_rubric
   (JSON), due_date, max_score và allowed_file_types. Module nộp bài cần kiểm tra
@@ -85,8 +80,8 @@ STUDENT không truy cập được routes dành cho giảng viên.
   `assignmentType` được hiểu là `DOCUMENT`.
 - Câu hỏi lưu JSON trong `assignments.questions_json`; loại bài lưu ở
   `assignments.assignment_type`. Với database quản lý schema thủ công, dùng
-  `backend/db/migrations/V20261031_02__assignment_questions.sql` trước khi chạy
-  phiên bản mới. Không chạy script nếu `ddl-auto=update` đã thêm các cột.
+  `backend/db/ams_demo.sql` trên database test mới; khi nâng cấp database đang có
+  dữ liệu cần migration riêng, không chạy script demo vì nó xóa `ams_db`.
 - Trang chi tiết giảng viên hiển thị lựa chọn cùng đáp án đúng. API này vẫn chỉ
   dành cho TEACHER/ADMIN. Module làm bài sinh viên cần DTO riêng không trả đáp án
   đúng; phần nộp bài/chấm trắc nghiệm thuộc module sinh viên.
