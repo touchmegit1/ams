@@ -64,7 +64,10 @@ class EnrollmentIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
     }
     void webhook(long id, String code, long amount, String account, boolean valid) throws Exception {
-        byte[] body = json.writeValueAsBytes(Map.of("id", id, "code", code, "accountNumber", account,
+        webhookWithContent(id, code, "", amount, account, valid);
+    }
+    void webhookWithContent(long id, String code, String content, long amount, String account, boolean valid) throws Exception {
+        byte[] body = json.writeValueAsBytes(Map.of("id", id, "code", code, "content", content, "accountNumber", account,
                 "transferType", "in", "transferAmount", amount, "transactionDate",
                 LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusSeconds(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))));
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
@@ -97,6 +100,29 @@ class EnrollmentIntegrationTest {
         mvc.perform(post("/api/enrollments/courses/{id}", freeId).header("Authorization", student))
                 .andExpect(status().isOk()).andExpect(jsonPath("status").value("ACTIVE"));
     }
+    @Test void replayOfReviewedWebhookUsesExactCodeInContent() throws Exception {
+        String code = json.readTree(enroll()).get("orderCode").asText();
+        webhookWithContent(707, "", "Unrecognized payment", 100000, "123456789", true);
+        assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
+        webhookWithContent(707, "", "Chuyen tien " + code + " khoa hoc", 100000, "123456789", true);
+        assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("ACTIVE");
+        assertThat(reviews.findAll().get(0).getStatus().name()).isEqualTo("CLOSED");
+        assertThat(transactions.count()).isEqualTo(1);
+    }
+    @Test void codeInContentDoesNotOverrideWrongAccount() throws Exception {
+        String code = json.readTree(enroll()).get("orderCode").asText();
+        webhookWithContent(808, "", code, 100000, "999999999", true);
+        assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
+        assertThat(reviews.findAll().get(0).getReason()).isEqualTo("WRONG_ACCOUNT");
+    }
+    @Test void paymentToCurrentReceivingAccountCanMatchOlderQrAccount() throws Exception {
+        String code = json.readTree(enroll()).get("orderCode").asText();
+        var payment = payments.findByOrderCode(code).orElseThrow();
+        payment.setAccountNumber("previous-account");
+        payments.save(payment);
+        webhookWithContent(909, "", "Chuyen khoan " + code, 100000, "123456789", true);
+        assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("ACTIVE");
+    }
     @Test void expiredPaymentGetsNewCodeAndLateTransferIsReviewed() throws Exception {
         String oldCode = json.readTree(enroll()).get("orderCode").asText();
         var oldPayment = payments.findByOrderCode(oldCode).orElseThrow();
@@ -111,6 +137,8 @@ class EnrollmentIntegrationTest {
         assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
     }
     @Test void previewHidesLessonContentUntilActive() throws Exception {
+        mvc.perform(get("/api/courses/published").header("Authorization", student))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].teacherName").value("teacher"));
         CourseModule module = new CourseModule(); module.setCourse(courses.findById(courseId).orElseThrow());
         module.setTitle("Module"); module = modules.save(module);
         Lesson lesson = new Lesson(); lesson.setModule(module); lesson.setTitle("Lesson");

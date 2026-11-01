@@ -3,6 +3,9 @@ package com.ams.assignment;
 import com.ams.assignment.entity.*;
 import com.ams.assignment.repository.*;
 import com.ams.assignment.config.AssignmentDeadlineJob;
+import com.ams.enrollment.entity.Enrollment;
+import com.ams.enrollment.entity.EnrollmentStatus;
+import com.ams.enrollment.repository.EnrollmentRepository;
 import com.ams.auth.entity.User;
 import com.ams.auth.repository.UserRepository;
 import com.ams.auth.security.JwtTokenProvider;
@@ -31,10 +34,12 @@ class AssignmentIntegrationTest {
     @Autowired AssignmentTemplateRepository templates;
     @Autowired JwtTokenProvider jwt;
     @Autowired AssignmentDeadlineJob job;
+    @Autowired EnrollmentRepository enrollments;
+    @Autowired com.ams.coursemgmt.repository.CourseRepository enrollmentCourses;
     String teacher,other,student,admin;
     Integer subjectId;
     @BeforeEach void setup() {
-        assignments.deleteAll(); templates.deleteAll(); courses.deleteAll(); users.deleteAll();
+        enrollments.deleteAll(); assignments.deleteAll(); templates.deleteAll(); courses.deleteAll(); users.deleteAll();
         User t=account("teacher",User.Role.TEACHER);
         teacher=token(t); other=token(account("other",User.Role.TEACHER)); student=token(account("student",User.Role.STUDENT)); admin=token(account("admin",User.Role.ADMIN));
         Course c=new Course(); c.setTeacherId(t.getUserId()); c.setTitle("Lập trình Java"); subjectId=courses.save(c).getId();
@@ -118,6 +123,25 @@ class AssignmentIntegrationTest {
         mvc.perform(get("/api/assignments/{id}",id).header("Authorization",teacher))
             .andExpect(status().isOk()).andExpect(jsonPath("assignmentType").value("DOCUMENT"))
             .andExpect(jsonPath("allowedFileTypes[0]").value("DOC")).andExpect(jsonPath("questions.length()").value(0));
+    }
+    @Test void studentsSeeOnlyPublishedAssignmentsOfActiveCoursesWithoutQuizAnswers() throws Exception {
+        Map<String,Object> quiz=body(); quiz.put("assignmentType","QUIZ"); quiz.put("allowedFileTypes",List.of());
+        quiz.put("questions",List.of(Map.of("text","Question","type","SINGLE","options",List.of("A","B"),"correctAnswers",List.of(1))));
+        int id=create(quiz);
+        mvc.perform(get("/api/student/assignments").header("Authorization",student)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/student/assignments/{id}",id).header("Authorization",student)).andExpect(status().isNotFound());
+        mvc.perform(post("/api/assignments/{id}/publish",id).header("Authorization",teacher)).andExpect(status().isOk());
+        mvc.perform(get("/api/student/assignments/{id}",id).header("Authorization",student)).andExpect(status().isForbidden());
+        User learner=users.findByEmail("student@test.local").orElseThrow();
+        Enrollment enrollment=new Enrollment(); enrollment.setStudent(learner);
+        enrollment.setCourse(enrollmentCourses.findById(subjectId).orElseThrow()); enrollment.setStatus(EnrollmentStatus.ACTIVE);
+        enrollments.save(enrollment);
+        mvc.perform(get("/api/student/assignments").header("Authorization",student)).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].title").value("Bài tập REST API"))
+            .andExpect(jsonPath("$[0].questions[0].correctAnswers").doesNotExist());
+        mvc.perform(get("/api/student/assignments/{id}",id).header("Authorization",student)).andExpect(status().isOk())
+            .andExpect(jsonPath("questions[0].correctAnswers").doesNotExist());
+        mvc.perform(get("/api/student/assignments").header("Authorization",teacher)).andExpect(status().isForbidden());
     }
     @Test void deadlineClosesOnlyExpiredPublishedAssignments() throws Exception {
         int id=create(body()); mvc.perform(post("/api/assignments/{id}/publish",id).header("Authorization",teacher)).andExpect(status().isOk());

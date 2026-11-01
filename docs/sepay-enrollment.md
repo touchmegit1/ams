@@ -7,6 +7,8 @@
 3. Liên kết tài khoản ngân hàng trên SePay. Cấu hình mã thanh toán với đúng tiền tố và hậu tố 10 ký tự chữ/số. Tạo webhook cho sự kiện **Có tiền vào**, tới `https://<backend-host>/api/webhooks/sepay`, xác thực **HMAC-SHA256**, dùng cùng secret với backend. Chỉ chọn tài khoản ngân hàng đã khai báo.
 4. Webhook cần HTTPS công khai. Dùng tính năng gửi thử trên SePay trước, sau đó thử một khoản chuyển nhỏ và kiểm tra trang **Đối soát thanh toán** của admin.
 
+Nếu SePay gửi `code` rỗng nhưng `content` chứa đúng mã dạng `AMS` + 10 ký tự hex, backend sẽ nhận diện mã từ nội dung của webhook đã xác thực HMAC. Sau khi cập nhật backend, dùng **Gửi lại** trên lịch sử webhook của giao dịch thật để xử lý lại bản ghi `UNKNOWN_ORDER`; không cần chuyển tiền thêm. Việc gửi lại vẫn phải khớp tài khoản nhận hiện cấu hình, số tiền và hạn thanh toán. Khi đổi `SEPAY_ACCOUNT_NUMBER`, QR của đơn cũ vẫn hiện tài khoản đã lưu lúc tạo đơn; chỉ thực hiện chuyển khoản theo QR mới khi đã xác nhận số tài khoản nhận chính xác.
+
 ## Quy tắc xử lý
 
 - Khóa miễn phí kích hoạt ngay. Khóa trả phí tạo mã chuyển khoản mới với hạn 5 giờ. Một sinh viên có một đăng ký trên mỗi khóa học; lần thử thanh toán cũ được giữ để đối soát.

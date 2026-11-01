@@ -10,6 +10,7 @@ public record CourseResponse(
         Integer courseId,
         String courseCode,
         String title,
+        String teacherName,
         String subject,
         String targetAudience,
         String description,
@@ -19,7 +20,7 @@ public record CourseResponse(
         LocalDateTime updatedAt
 ) {
     public static CourseResponse from(Course course) {
-        return new CourseResponse(course.getCourseId(), course.getCourseCode(), course.getTitle(),
+        return new CourseResponse(course.getCourseId(), course.getCourseCode(), course.getTitle(), course.getTeacher().getFullName(),
                 course.getSubject(), course.getTargetAudience(), course.getDescription(), course.getPrice(),
                 course.getStatus(), course.getCreatedAt(), course.getUpdatedAt());
     }

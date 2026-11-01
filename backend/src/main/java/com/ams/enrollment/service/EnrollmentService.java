@@ -124,7 +124,7 @@ public class EnrollmentService {
                 : "https://vietqr.app/img?acc=" + encode(payment.getAccountNumber()) + "&bank=" + encode(bank)
                 + "&amount=" + payment.getAmount().toBigIntegerExact() + "&des=" + encode(payment.getOrderCode()) + "&template=compact";
         return new EnrollmentResponse(enrollment.getId(), enrollment.getCourse().getCourseId(),
-                enrollment.getCourse().getTitle(), status, payment == null ? null : payment.getId(),
+                enrollment.getCourse().getTitle(), enrollment.getCourse().getTeacher().getFullName(), status, payment == null ? null : payment.getId(),
                 paymentStatus, payment == null ? null : payment.getAmount(), payment == null ? null : payment.getOrderCode(),
                 payment == null ? null : bank, payment == null ? null : payment.getAccountNumber(),
                 payment == null ? null : payment.getOrderCode(), qr, payment == null ? null : payment.getExpiresAt());

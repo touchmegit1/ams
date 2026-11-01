@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
 import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight } from 'react-icons/fi';
 import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
 import StudentCourses from './StudentCourses.jsx';
+import StudentAssignments from './StudentAssignments.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const studentSections = [
   { id: 'home', label: 'Trang chủ', icon: FiHome, title: 'Bắt đầu từ đây', description: 'Theo dõi môn học, bài tập và tiến độ học tập trong một không gian.', detail: 'Xem tổng quan và chọn công việc bạn muốn tiếp tục.' },
   { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Khóa học đang mở', description: 'Khám phá các khóa học đã xuất bản cùng nội dung học phần.', detail: 'Các khóa học đã xuất bản sẽ xuất hiện tại đây.' },
-  { id: 'enrollment', label: 'Đăng ký học', icon: FiLayers, title: 'Đăng ký khóa học', description: 'Chọn khóa học phù hợp và theo dõi quá trình ghi danh.', detail: 'Thông tin đăng ký và thanh toán sẽ xuất hiện tại đây.' },
-  { id: 'assignments', label: 'Bài tập', icon: FiClipboard, title: 'Bài tập của bạn', description: 'Nộp bài và xem đánh giá để cải thiện từng bước.', detail: 'Bài tập được giao và kết quả đánh giá sẽ xuất hiện tại đây.' },
+  { id: 'enrollment', label: 'Đăng ký học', icon: FiLayers, title: 'Khóa học của tôi', description: 'Theo dõi các khóa đã đăng ký và thanh toán đang chờ.', detail: 'Thông tin đăng ký và thanh toán sẽ xuất hiện tại đây.' },
+  { id: 'assignments', label: 'Bài tập', icon: FiClipboard, title: 'Bài tập của bạn', description: 'Xem bài tập trong những khóa học bạn đã đăng ký.', detail: 'Bài tập được giao sẽ xuất hiện tại đây.' },
 ];
 
 const teacherSections = [
@@ -23,13 +25,15 @@ const teacherSections = [
 function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeId, setActiveId] = useState(() => new URLSearchParams(window.location.search).get('section') || 'home');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeId = searchParams.get('section') || 'home';
   const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
   const openSection = (id) => {
     if (isTeacher && (id === 'courses' || id === 'content')) navigate('/courses');
     else if (id === 'assignments' && isTeacher) navigate('/teacher/assignments');
-    else setActiveId(id);
+    else setSearchParams(id === 'home' ? {} : { section: id });
   };
+  const openCourse = (courseId) => setSearchParams(courseId == null ? { section: activeId } : { section: activeId, course: String(courseId) });
   useEffect(() => { if (user?.role === 'ADMIN') navigate('/admin', { replace: true }); }, [user?.role, navigate]);
   const sections = isTeacher ? teacherSections : studentSections;
   const active = sections.find((section) => section.id === activeId) || sections[0];
@@ -63,10 +67,10 @@ function DashboardPage() {
             </section>
           </div>
         ) : (
-          <section className="dashboard-detail" aria-labelledby="dashboard-detail-title">
-            <button className="dashboard-back" onClick={() => setActiveId('home')}>Trang chủ <span aria-hidden="true">/</span> {active.label}</button>
+          <section className={`dashboard-detail ${!isTeacher && (active.id === 'courses' || active.id === 'enrollment') ? 'dashboard-detail-courses' : ''}`} aria-labelledby="dashboard-detail-title">
+            <button className="dashboard-back" onClick={() => openSection('home')}>Trang chủ <span aria-hidden="true">/</span> {active.label}</button>
             <div className="dashboard-detail-heading"><span className="dashboard-detail-icon"><active.icon aria-hidden="true" /></span><p>{isTeacher ? 'KHÔNG GIAN GIẢNG DẠY' : 'KHÔNG GIAN HỌC TẬP'}</p><h1 id="dashboard-detail-title">{active.title}</h1><span>{active.description}</span></div>
-            {!isTeacher && (active.id === 'courses' || active.id === 'enrollment') ? <StudentCourses /> : <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>}
+            {!isTeacher && (active.id === 'courses' || active.id === 'enrollment') ? <StudentCourses initialView={active.id === 'enrollment' ? 'enrollment' : 'catalog'} initialCourseId={searchParams.get('course')} onCourseChange={openCourse} /> : !isTeacher && active.id === 'assignments' ? <StudentAssignments /> : <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>}
           </section>
         )}
       </main>

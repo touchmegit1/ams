@@ -18,6 +18,9 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class SepayWebhookService {
@@ -28,6 +31,7 @@ public class SepayWebhookService {
     private final SepayTransactionRepository transactions;
     @Value("${sepay.webhook-secret:}") private String secret;
     @Value("${sepay.account-number:}") private String accountNumber;
+    @Value("${sepay.order-prefix:AMS}") private String orderPrefix;
 
     public SepayWebhookService(ObjectMapper mapper, PaymentRepository payments, EnrollmentRepository enrollments,
             PaymentReviewRepository reviews, SepayTransactionRepository transactions) {
@@ -58,8 +62,10 @@ public class SepayWebhookService {
         catch (Exception error) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid JSON"); }
         long id = json.path("id").asLong(0);
         if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing transaction id");
-        if (transactions.existsById(id)) return;
-        String code = json.path("code").asText("");
+        PaymentReview existingReview = reviews.findBySepayTransactionIdForUpdate(id).orElse(null);
+        if (transactions.existsById(id) && (existingReview == null || !"UNKNOWN_ORDER".equals(existingReview.getReason()))) return;
+        String code = paymentCode(json);
+        if (existingReview != null && code.isBlank()) return;
         String account = json.path("accountNumber").asText("");
         String direction = json.path("transferType").asText("");
         BigDecimal amount;
@@ -71,8 +77,8 @@ public class SepayWebhookService {
         else if (payment == null) reason = "UNKNOWN_ORDER";
         else {
             Enrollment enrollment = enrollments.findWithLockById(payment.getEnrollment().getId()).orElseThrow();
-            if (transactions.existsById(id)) return;
-            if (!account.equals(accountNumber) || !account.equals(payment.getAccountNumber())) reason = "WRONG_ACCOUNT";
+            if (transactions.existsById(id) && existingReview == null) return;
+            if (!account.equals(accountNumber)) reason = "WRONG_ACCOUNT";
             else if (payment.getAmount().compareTo(amount) != 0) reason = "WRONG_AMOUNT";
             else if (payment.getStatus() != PaymentStatus.PENDING || enrollment.getStatus() == EnrollmentStatus.ACTIVE) reason = "ORDER_NOT_PENDING";
             else if (!transferTime(json).isBefore(payment.getExpiresAt())
@@ -85,18 +91,42 @@ public class SepayWebhookService {
                 enrollment.setActivatedAt(Instant.now());
             }
         }
-        SepayTransaction transaction = new SepayTransaction();
-        transaction.setId(id);
-        transactions.save(transaction);
+        if (existingReview == null) {
+            SepayTransaction transaction = new SepayTransaction();
+            transaction.setId(id);
+            transactions.save(transaction);
+        }
         if (reason != null) {
-            PaymentReview review = new PaymentReview();
+            PaymentReview review = existingReview == null ? new PaymentReview() : existingReview;
             review.setSepayTransactionId(id);
             review.setOrderCode(code);
             review.setAccountNumber(account);
             review.setAmount(amount);
             review.setReason(reason);
             reviews.save(review);
+        } else if (existingReview != null) {
+            existingReview.setOrderCode(code);
+            existingReview.setStatus(ReviewStatus.CLOSED);
+            existingReview.setNote("Tự xác nhận sau khi SePay gửi lại webhook đã ký.");
+            existingReview.setClosedAt(Instant.now());
         }
+    }
+
+    private String paymentCode(JsonNode json) {
+        String extracted = json.path("code").asText("").trim();
+        if (!extracted.isBlank()) return extracted.toUpperCase(Locale.ROOT);
+        if (!orderPrefix.matches("[A-Za-z]{2,5}")) return "";
+        String content = json.path("content").asText("");
+        Pattern pattern = Pattern.compile("(?i)(?<![A-Za-z0-9])" + Pattern.quote(orderPrefix)
+                + "[A-F0-9]{10}(?![A-Za-z0-9])");
+        Matcher matcher = pattern.matcher(content);
+        String code = "";
+        while (matcher.find()) {
+            String candidate = matcher.group().toUpperCase(Locale.ROOT);
+            if (!code.isBlank() && !code.equals(candidate)) return "";
+            code = candidate;
+        }
+        return code;
     }
 
     private ResponseStatusException unauthorized() { return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature"); }
