@@ -9,44 +9,42 @@ import { useEffect, useRef } from 'react';
 
 // ⚠️ ĐỔI THÀNH CLIENT ID CỦA BẠN (lấy từ Google Cloud Console)
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+let initializedClientId = '';
+let activeSuccessHandler = null;
 
 function GoogleLoginButton({ onSuccess }) {
   const buttonRef = useRef(null);
-  const initialized = useRef(false);
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || initialized.current) return;
+    if (!GOOGLE_CLIENT_ID) return undefined;
+    activeSuccessHandler = onSuccess;
 
     const initGoogle = () => {
       if (!window.google?.accounts?.id) return;
 
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: (response) => {
-          if (response.credential) {
-            onSuccess(response.credential);
-          }
-        },
-      });
+      if (initializedClientId !== GOOGLE_CLIENT_ID) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (response) => {
+            if (response.credential) activeSuccessHandler?.(response.credential);
+          },
+        });
+        initializedClientId = GOOGLE_CLIENT_ID;
+      }
 
+      const width = Math.min(400, Math.max(120, Math.floor(buttonRef.current?.clientWidth || 320)));
+      if (!buttonRef.current || buttonRef.current.dataset.renderedWidth === String(width)) return;
+      buttonRef.current.replaceChildren();
       window.google.accounts.id.renderButton(buttonRef.current, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-        width: '100%',
-        logo_alignment: 'center',
+        type: 'standard', theme: 'outline', size: 'large', text: 'signin_with',
+        width: String(width), logo_alignment: 'center',
       });
-
-      initialized.current = true;
+      buttonRef.current.dataset.renderedWidth = String(width);
     };
 
-    // Nếu SDK đã load rồi
-    if (window.google?.accounts?.id) {
-      initGoogle();
-    } else {
-      // Load Google only where its button is used, never on recovery pages.
-      let script = document.getElementById('ams-google-sdk');
+    let script;
+    if (!window.google?.accounts?.id) {
+      script = document.getElementById('ams-google-sdk');
       if (!script) {
         script = document.createElement('script');
         script.id = 'ams-google-sdk';
@@ -55,7 +53,16 @@ function GoogleLoginButton({ onSuccess }) {
         document.head.appendChild(script);
       }
       script.addEventListener('load', initGoogle);
-      return () => script.removeEventListener('load', initGoogle);
+    }
+
+    const resizeObserver = new ResizeObserver(initGoogle);
+    if (buttonRef.current) resizeObserver.observe(buttonRef.current);
+    initGoogle();
+
+    return () => {
+      script?.removeEventListener('load', initGoogle);
+      resizeObserver.disconnect();
+      if (activeSuccessHandler === onSuccess) activeSuccessHandler = null;
     }
   }, [onSuccess]);
 
@@ -74,7 +81,7 @@ function GoogleLoginButton({ onSuccess }) {
   return (
     <div
       ref={buttonRef}
-      style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}
+      style={{ display: 'flex', justifyContent: 'center', marginTop: 12, width: '100%', maxWidth: 400, marginInline: 'auto' }}
     />
   );
 }

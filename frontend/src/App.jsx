@@ -26,6 +26,7 @@ import AdminPage from "./pages/admin/AdminPage.jsx";
 import TeacherWorkspaceLayout from "./pages/dashboard/TeacherWorkspaceLayout.jsx";
 import CourseManagementPage from "./pages/course/CourseManagementPage.jsx";
 import CourseCurriculumPage from "./pages/course/CourseCurriculumPage.jsx";
+import TeacherStudentsPage from "./pages/course/TeacherStudentsPage.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 
 function ApiNavigation() {
@@ -98,7 +99,7 @@ function App() {
               }
             />
 
-            {/* Redirect */}
+            {/* Teacher routes */}
             <Route
               path="/teacher"
               element={
@@ -129,6 +130,7 @@ function App() {
                 path="assignment-templates/:id"
                 element={<AssignmentDetailPage template />}
               />
+              <Route path="students" element={<TeacherStudentsPage />} />
             </Route>
             <Route
               path="/forbidden"

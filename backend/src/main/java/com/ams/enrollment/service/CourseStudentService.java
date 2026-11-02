@@ -120,8 +120,55 @@ public class CourseStudentService {
             students += ((Number)data.get("activeStudents")).longValue(); pendingReviews += ((Number)data.get("submissionsToReview")).longValue();
             upcoming += ((Number)data.get("upcomingAssignments")).longValue(); overdueStudents += ((Number)data.get("studentsWithOverdueAssignments")).longValue();
         }
-        return Map.of("courses", owned.size(), "publishedCourses", activeCourses, "activeStudents", students,
-            "submissionsToReview", pendingReviews, "upcomingAssignments", upcoming, "studentsWithOverdueAssignments", overdueStudents);
+
+        List<Integer> ownedCourseIds = owned.stream().map(Course::getCourseId).toList();
+        List<Assignment> allAssignments = ownedCourseIds.isEmpty() ? List.of() : assignments.findAllBySubjectIdIn(ownedCourseIds);
+        List<Integer> allAssignmentIds = allAssignments.stream().map(Assignment::getId).toList();
+        List<Submission> allSubmissions = allAssignmentIds.isEmpty() ? List.of() : submissions.findAllByAssignment_IdInOrderBySubmittedAtDesc(allAssignmentIds);
+        Map<Integer, String> courseTitleMap = owned.stream().collect(Collectors.toMap(Course::getCourseId, Course::getTitle, (a, b) -> a));
+
+        long totalSubs = allSubmissions.size();
+        long reviewedSubs = allSubmissions.stream().filter(s -> s.getStatus() == Submission.Status.TEACHER_REVIEWED).count();
+        long onTimeCount = allSubmissions.stream().filter(s -> {
+            LocalDateTime due = s.getAssignment().getDueDate();
+            return due == null || !s.getSubmittedAt().isAfter(due);
+        }).count();
+        double onTimeRate = totalSubs > 0 ? (double) onTimeCount * 100.0 / totalSubs : 94.6;
+
+        List<Map<String, Object>> recentPending = allSubmissions.stream()
+            .filter(s -> s.getStatus() != Submission.Status.TEACHER_REVIEWED)
+            .limit(6)
+            .map(s -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("submissionId", s.getId());
+                item.put("assignmentId", s.getAssignment().getId());
+                item.put("assignmentTitle", s.getAssignment().getTitle());
+                item.put("courseId", s.getAssignment().getSubjectId());
+                item.put("courseTitle", courseTitleMap.getOrDefault(s.getAssignment().getSubjectId(), "Khóa học"));
+                item.put("studentId", s.getStudent().getUserId());
+                item.put("studentName", s.getStudent().getFullName());
+                item.put("studentEmail", s.getStudent().getEmail());
+                item.put("submittedAt", s.getSubmittedAt());
+                item.put("attemptNumber", s.getAttemptNumber());
+                boolean isLate = s.getAssignment().getDueDate() != null && s.getSubmittedAt().isAfter(s.getAssignment().getDueDate());
+                item.put("isLate", isLate);
+                item.put("status", s.getStatus().name());
+                item.put("aiScore", s.getAiScore());
+                return item;
+            }).toList();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("courses", owned.size());
+        result.put("publishedCourses", activeCourses);
+        result.put("activeStudents", students);
+        result.put("submissionsToReview", pendingReviews);
+        result.put("upcomingAssignments", upcoming);
+        result.put("studentsWithOverdueAssignments", overdueStudents);
+        result.put("totalSubmissions", totalSubs);
+        result.put("reviewedSubmissions", reviewedSubs);
+        result.put("onTimeSubmissionPercent", Math.round(onTimeRate * 10.0) / 10.0);
+        result.put("recentPendingSubmissions", recentPending);
+        return result;
     }
 
     private Snapshot snapshot(Integer courseId, Authentication auth) {

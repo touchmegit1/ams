@@ -20,6 +20,8 @@ import StudentAssignments from './StudentAssignments.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../services/api.js';
 import { courseStatusLabel } from '../course/courseUi.js';
+import TeacherPortalLayout from '../../components/layout/TeacherPortalLayout.jsx';
+import TeacherDashboard from './TeacherDashboard.jsx';
 import './teacher-dashboard.css';
 
 const studentSections = [
@@ -39,10 +41,19 @@ function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
+
+  if (isTeacher) {
+    return (
+      <TeacherPortalLayout>
+        <TeacherDashboard />
+      </TeacherPortalLayout>
+    );
+  }
+
   const [teacherOverview, setTeacherOverview] = useState(null);
   const [teacherCourses, setTeacherCourses] = useState([]);
   const activeId = searchParams.get('section') || 'home';
-  const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
 
   useEffect(() => {
     if (!isTeacher) return;

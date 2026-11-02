@@ -3,6 +3,7 @@ import { useWorkspaceNavigate } from '../../components/common/WorkspaceNavigatio
 import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StudentCourses from './StudentCourses.jsx';
+import TeacherPortalLayout from '../../components/layout/TeacherPortalLayout.jsx';
 import '../../assets/styles/course-management.css';
 
 const teacherSections = [
@@ -45,14 +46,5 @@ export default function TeacherWorkspaceLayout() {
     );
   }
 
-  return (
-    <div className="dashboard-container course-workspace">
-      <WorkspaceHeader
-        sections={teacherSections}
-        activeId={pathname.startsWith('/courses') ? 'courses' : pathname.startsWith('/teacher') ? 'assignments' : 'home'}
-        onSelect={onSelect}
-      />
-      <Outlet />
-    </div>
-  );
+  return <TeacherPortalLayout />;
 }

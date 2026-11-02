@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
@@ -55,7 +55,9 @@ function LoginPage() {
       saveAuth(res.data);
       toast.success('Đăng nhập thành công!');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Đăng nhập thất bại';
+      const msg = err.response?.data?.message || (err.response?.status === 502 || !err.response
+        ? 'Không kết nối được máy chủ AMS. Hãy kiểm tra backend cổng 8080 và cơ sở dữ liệu rồi thử lại.'
+        : 'Đăng nhập thất bại');
       setSubmitError(msg);
 
       // Nếu chưa verify → chuyển sang trang OTP
@@ -67,15 +69,17 @@ function LoginPage() {
     }
   };
 
-  const handleGoogleSuccess = async (idToken) => {
+  const handleGoogleSuccess = useCallback(async (idToken) => {
     try {
       const res = await authService.googleLogin(idToken);
       saveAuth(res.data);
       toast.success('Đăng nhập Google thành công!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Đăng nhập Google thất bại');
+      toast.error(err.response?.data?.message || (err.response?.status === 502 || !err.response
+        ? 'Không kết nối được máy chủ AMS. Hãy kiểm tra backend cổng 8080 và cơ sở dữ liệu rồi thử lại.'
+        : 'Đăng nhập Google thất bại'));
     }
-  };
+  }, [saveAuth]);
 
   return (
     <div className="auth-container auth-page">
