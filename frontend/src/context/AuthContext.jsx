@@ -1,46 +1,62 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService.js';
+import { clearSession, restoreSession, saveSession, updateSessionUser } from '../services/authSession.js';
+import { toast } from 'react-toastify';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [initialSession] = useState(restoreSession);
+  const [user, setUser] = useState(initialSession?.user || null);
+  const [token, setToken] = useState(initialSession?.accessToken || null);
   const [loading, setLoading] = useState(true);
 
-  // Khôi phục session từ localStorage khi mount
+  // Remove credentials from previous app versions. The current session is tab-scoped.
   useEffect(() => {
-    const savedToken = localStorage.getItem('accessToken');
-    const savedUser = localStorage.getItem('user');
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-    }
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+    const endSession = () => { setToken(null); setUser(null); };
+    window.addEventListener('ams:session-ended', endSession);
     setLoading(false);
+    return () => window.removeEventListener('ams:session-ended', endSession);
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      const remaining = payload.exp * 1000 - Date.now();
+      if (!Number.isFinite(remaining) || remaining <= 0) { clearSession(); return; }
+      const timer = setTimeout(clearSession, remaining);
+      return () => clearTimeout(timer);
+    } catch { clearSession(); }
+  }, [token]);
 
   /** Lưu thông tin sau login/verify thành công */
   const saveAuth = (authResponse) => {
     const { accessToken, user: userInfo } = authResponse;
     setToken(accessToken);
     setUser(userInfo);
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('user', JSON.stringify(userInfo));
+    saveSession(accessToken, userInfo);
+  };
+
+  const updateUser = (userInfo) => {
+    setUser(userInfo);
+    updateSessionUser(userInfo);
   };
 
   /** Đăng xuất */
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try { await authService.logout(); }
+    catch { toast.error('Đã thoát trên trình duyệt; chưa xác nhận thu hồi phiên trên máy chủ.'); }
+    finally { clearSession(); }
   };
 
   /** Kiểm tra đã đăng nhập chưa */
   const isAuthenticated = !!token && !!user;
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isAuthenticated, saveAuth, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, isAuthenticated, saveAuth, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

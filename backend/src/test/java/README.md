@@ -1,3 +1,0 @@
-﻿# java
-
-Java test files.

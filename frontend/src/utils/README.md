@@ -1,3 +1,0 @@
-﻿# utils
-
-Utility/helper functions.

@@ -45,14 +45,17 @@ function GoogleLoginButton({ onSuccess }) {
     if (window.google?.accounts?.id) {
       initGoogle();
     } else {
-      // Chờ SDK load
-      const interval = setInterval(() => {
-        if (window.google?.accounts?.id) {
-          initGoogle();
-          clearInterval(interval);
-        }
-      }, 100);
-      return () => clearInterval(interval);
+      // Load Google only where its button is used, never on recovery pages.
+      let script = document.getElementById('ams-google-sdk');
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'ams-google-sdk';
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        document.head.appendChild(script);
+      }
+      script.addEventListener('load', initGoogle);
+      return () => script.removeEventListener('load', initGoogle);
     }
   }, [onSuccess]);
 
@@ -63,7 +66,6 @@ function GoogleLoginButton({ onSuccess }) {
         className="btn btn-google"
         onClick={() => alert('Chưa cấu hình Google Client ID.\n\nTạo file .env ở frontend với:\nVITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com\n\nLấy Client ID từ: https://console.cloud.google.com/apis/credentials')}
       >
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
         Đăng nhập bằng Google
       </button>
     );
