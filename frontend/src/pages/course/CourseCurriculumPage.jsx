@@ -795,238 +795,238 @@ function CourseCurriculumPage() {
             </section>
           )}
 
-          {/* TAB 3: SUBJECT ASSIGNMENTS */}
-          {activeTab === 'assignments' && (
-            <section className="cm-panel cm-curriculum-panel">
-              <div className="cm-panel-heading">
-                <div>
-                  <h2>Bài tập của môn học</h2>
-                  <p>Soạn đề tự luận hoặc bài kiểm tra trắc nghiệm, cấu hình rubric và chấm bài nộp.</p>
-                </div>
-                <button
-                  type="button"
-                  className="cm-button cm-button-primary"
-                  onClick={() => navigate(`/teacher/assignments/new?subjectId=${courseId}`)}
-                >
-                  ＋ Soạn bài tập mới
-                </button>
-              </div>
+          {/* TAB 3: SUBJECT ASSIGNMENTS */ }
+          { activeTab === 'assignments' && (
+                    <section className="cm-panel cm-curriculum-panel">
+                      <div className="cm-panel-heading">
+                        <div>
+                          <h2>Bài tập của môn học</h2>
+                          <p>Soạn đề tự luận hoặc bài kiểm tra trắc nghiệm, cấu hình rubric và chấm bài nộp.</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="cm-button cm-button-primary"
+                          onClick={() => navigate(`/teacher/assignments/new?subjectId=${courseId}`)}
+                        >
+                          ＋ Soạn bài tập mới
+                        </button>
+                      </div>
 
-              <div style={{ padding: '16px 20px 24px' }}>
-                {assignmentsError && <div className="cm-alert" role="alert">{assignmentsError}</div>}
-                {assignmentsLoading ? (
-                  <div className="cm-loading">Đang tải danh sách bài tập…</div>
-                ) : courseAssignments.length === 0 ? (
-                  <div className="cm-empty-state">
-                    <div className="cm-empty-icon">📝</div>
-                    <h3>Khóa học chưa có bài tập</h3>
-                    <p>Soạn bài tập tự luận hoặc bài trắc nghiệm để sinh viên thực hành và tích lũy điểm số.</p>
+                      <div style={{ padding: '16px 20px 24px' }}>
+                        {assignmentsError && <div className="cm-alert" role="alert">{assignmentsError}</div>}
+                        {assignmentsLoading ? (
+                          <div className="cm-loading">Đang tải danh sách bài tập…</div>
+                        ) : courseAssignments.length === 0 ? (
+                          <div className="cm-empty-state">
+                            <div className="cm-empty-icon">📝</div>
+                            <h3>Khóa học chưa có bài tập</h3>
+                            <p>Soạn bài tập tự luận hoặc bài trắc nghiệm để sinh viên thực hành và tích lũy điểm số.</p>
+                            <button
+                              type="button"
+                              className="cm-button cm-button-primary"
+                              onClick={() => navigate(`/teacher/assignments/new?subjectId=${courseId}`)}
+                            >
+                              Soạn bài tập đầu tiên
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="cm-table-wrap">
+                            <table className="cm-table">
+                              <thead>
+                                <tr>
+                                  <th>Tên bài tập</th>
+                                  <th>Hình thức</th>
+                                  <th>Hạn nộp</th>
+                                  <th>Điểm tối đa</th>
+                                  <th>Tình hình nộp</th>
+                                  <th>Trạng thái</th>
+                                  <th><span className="sr-only">Thao tác</span></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {courseAssignments.map((a) => (
+                                  <tr key={a.id}>
+                                    <td>
+                                      <div>
+                                        <Link to={`/teacher/assignments/${a.id}`} className="cm-course-title-link">
+                                          {a.title}
+                                        </Link>
+                                        <small className="cm-subline">{a.description || 'Chưa có mô tả'}</small>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <span style={{ fontSize: '12px', color: '#4a5b51', fontWeight: '600' }}>
+                                        {a.assignmentType === 'QUIZ' ? 'Trắc nghiệm' : 'Tự luận / nộp tệp'}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      {a.dueDate ? new Date(a.dueDate).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                    </td>
+                                    <td>
+                                      <strong>{a.maxScore}</strong>
+                                    </td>
+                                    <td>
+                                      <span style={{ fontSize: '12px' }}>
+                                        {a.submissionCount ?? 0} bài nộp
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <StatusTag status={a.status} />
+                                    </td>
+                                    <td>
+                                      <div className="cm-row-actions">
+                                        <Link to={`/teacher/assignments/${a.id}`} className="cm-button cm-button-small">
+                                          Xem
+                                        </Link>
+                                        {['DRAFT', 'PUBLISHED'].includes(a.status) && (
+                                          <Link to={`/teacher/assignments/${a.id}/edit`} className="cm-button cm-button-small cm-button-quiet">
+                                            Sửa
+                                          </Link>
+                                        )}
+                                        {a.status === 'DRAFT' && (
+                                          <button
+                                            type="button"
+                                            className="cm-button cm-button-small cm-button-primary"
+                                            onClick={() => transitionAssignment(a.id, 'publish')}
+                                          >
+                                            Xuất bản
+                                          </button>
+                                        )}
+                                        {a.status === 'PUBLISHED' && (
+                                          <button
+                                            type="button"
+                                            className="cm-button cm-button-small cm-button-quiet"
+                                            onClick={() => transitionAssignment(a.id, 'close')}
+                                          >
+                                            Đóng bài
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                {/* INSPECTOR SIDEBAR */}
+                <aside className="cm-inspector">
+                  <section className="cm-inspector-card">
+                    <h2>Thông tin khóa học</h2>
+                    <dl>
+                      <div>
+                        <dt>Mã khóa học</dt>
+                        <dd>{course.courseCode}</dd>
+                      </div>
+                      <div>
+                        <dt>Trạng thái</dt>
+                        <dd>
+                          <span className={`cm-status cm-status-${course.status.toLowerCase()}`}>
+                            {courseStatusLabel[course.status] || course.status}
+                          </span>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Tổng học phần</dt>
+                        <dd>{modules.length}</dd>
+                      </div>
+                      <div>
+                        <dt>Tổng bài học</dt>
+                        <dd>{totalLessons}</dd>
+                      </div>
+                      <div>
+                        <dt>Sinh viên đang học</dt>
+                        <dd>{analytics?.activeStudents ?? 0}</dd>
+                      </div>
+                      <div>
+                        <dt>Môn học</dt>
+                        <dd>{course.subject || '—'}</dd>
+                      </div>
+                      <div>
+                        <dt>Học phí</dt>
+                        <dd>{formatCoursePrice(course.price)}</dd>
+                      </div>
+                    </dl>
+                  </section>
+
+                  <section className="cm-inspector-card">
+                    <h2>Thao tác khóa học</h2>
                     <button
                       type="button"
-                      className="cm-button cm-button-primary"
+                      className="cm-inspector-action"
+                      onClick={() => { setSubmitError(''); setCourseFormOpen(true); }}
+                    >
+                      Sửa thông tin khóa học
+                    </button>
+                    <button
+                      type="button"
+                      className={`cm-inspector-action ${activeTab === 'curriculum' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('curriculum')}
+                    >
+                      Chương trình học ({modules.length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`cm-inspector-action ${activeTab === 'students' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('students')}
+                    >
+                      Danh sách sinh viên & tiến độ
+                    </button>
+                    <button
+                      type="button"
+                      className={`cm-inspector-action ${activeTab === 'assignments' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('assignments')}
+                    >
+                      Bài tập môn học ({courseAssignments.length})
+                    </button>
+                    <button
+                      type="button"
+                      className="cm-inspector-action"
                       onClick={() => navigate(`/teacher/assignments/new?subjectId=${courseId}`)}
                     >
-                      Soạn bài tập đầu tiên
+                      ＋ Soạn bài tập mới cho khóa
                     </button>
-                  </div>
-                ) : (
-                  <div className="cm-table-wrap">
-                    <table className="cm-table">
-                      <thead>
-                        <tr>
-                          <th>Tên bài tập</th>
-                          <th>Hình thức</th>
-                          <th>Hạn nộp</th>
-                          <th>Điểm tối đa</th>
-                          <th>Tình hình nộp</th>
-                          <th>Trạng thái</th>
-                          <th><span className="sr-only">Thao tác</span></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {courseAssignments.map((a) => (
-                          <tr key={a.id}>
-                            <td>
-                              <div>
-                                <Link to={`/teacher/assignments/${a.id}`} className="cm-course-title-link">
-                                  {a.title}
-                                </Link>
-                                <small className="cm-subline">{a.description || 'Chưa có mô tả'}</small>
-                              </div>
-                            </td>
-                            <td>
-                              <span style={{ fontSize: '12px', color: '#4a5b51', fontWeight: '600' }}>
-                                {a.assignmentType === 'QUIZ' ? 'Trắc nghiệm' : 'Tự luận / nộp tệp'}
-                              </span>
-                            </td>
-                            <td>
-                              {a.dueDate ? new Date(a.dueDate).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                            </td>
-                            <td>
-                              <strong>{a.maxScore}</strong>
-                            </td>
-                            <td>
-                              <span style={{ fontSize: '12px' }}>
-                                {a.submissionCount ?? 0} bài nộp
-                              </span>
-                            </td>
-                            <td>
-                              <StatusTag status={a.status} />
-                            </td>
-                            <td>
-                              <div className="cm-row-actions">
-                                <Link to={`/teacher/assignments/${a.id}`} className="cm-button cm-button-small">
-                                  Xem
-                                </Link>
-                                {['DRAFT', 'PUBLISHED'].includes(a.status) && (
-                                  <Link to={`/teacher/assignments/${a.id}/edit`} className="cm-button cm-button-small cm-button-quiet">
-                                    Sửa
-                                  </Link>
-                                )}
-                                {a.status === 'DRAFT' && (
-                                  <button
-                                    type="button"
-                                    className="cm-button cm-button-small cm-button-primary"
-                                    onClick={() => transitionAssignment(a.id, 'publish')}
-                                  >
-                                    Xuất bản
-                                  </button>
-                                )}
-                                {a.status === 'PUBLISHED' && (
-                                  <button
-                                    type="button"
-                                    className="cm-button cm-button-small cm-button-quiet"
-                                    onClick={() => transitionAssignment(a.id, 'close')}
-                                  >
-                                    Đóng bài
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                    <button
+                      type="button"
+                      className="cm-inspector-action"
+                      onClick={exportStudents}
+                    >
+                      Tải danh sách sinh viên (CSV)
+                    </button>
+                    <Link className="cm-inspector-action" to="/courses">
+                      Về danh sách khóa học
+                    </Link>
+                  </section>
+                </aside>
               </div>
-            </section>
-          )}
-
-          {/* INSPECTOR SIDEBAR */}
-          <aside className="cm-inspector">
-            <section className="cm-inspector-card">
-              <h2>Thông tin khóa học</h2>
-              <dl>
-                <div>
-                  <dt>Mã khóa học</dt>
-                  <dd>{course.courseCode}</dd>
-                </div>
-                <div>
-                  <dt>Trạng thái</dt>
-                  <dd>
-                    <span className={`cm-status cm-status-${course.status.toLowerCase()}`}>
-                      {courseStatusLabel[course.status] || course.status}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Tổng học phần</dt>
-                  <dd>{modules.length}</dd>
-                </div>
-                <div>
-                  <dt>Tổng bài học</dt>
-                  <dd>{totalLessons}</dd>
-                </div>
-                <div>
-                  <dt>Sinh viên đang học</dt>
-                  <dd>{analytics?.activeStudents ?? 0}</dd>
-                </div>
-                <div>
-                  <dt>Môn học</dt>
-                  <dd>{course.subject || '—'}</dd>
-                </div>
-                <div>
-                  <dt>Học phí</dt>
-                  <dd>{formatCoursePrice(course.price)}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="cm-inspector-card">
-              <h2>Thao tác khóa học</h2>
-              <button
-                type="button"
-                className="cm-inspector-action"
-                onClick={() => { setSubmitError(''); setCourseFormOpen(true); }}
-              >
-                Sửa thông tin khóa học
-              </button>
-              <button
-                type="button"
-                className={`cm-inspector-action ${activeTab === 'curriculum' ? 'active' : ''}`}
-                onClick={() => setActiveTab('curriculum')}
-              >
-                Chương trình học ({modules.length})
-              </button>
-              <button
-                type="button"
-                className={`cm-inspector-action ${activeTab === 'students' ? 'active' : ''}`}
-                onClick={() => setActiveTab('students')}
-              >
-                Danh sách sinh viên & tiến độ
-              </button>
-              <button
-                type="button"
-                className={`cm-inspector-action ${activeTab === 'assignments' ? 'active' : ''}`}
-                onClick={() => setActiveTab('assignments')}
-              >
-                Bài tập môn học ({courseAssignments.length})
-              </button>
-              <button
-                type="button"
-                className="cm-inspector-action"
-                onClick={() => navigate(`/teacher/assignments/new?subjectId=${courseId}`)}
-              >
-                ＋ Soạn bài tập mới cho khóa
-              </button>
-              <button
-                type="button"
-                className="cm-inspector-action"
-                onClick={exportStudents}
-              >
-                Tải danh sách sinh viên (CSV)
-              </button>
-              <Link className="cm-inspector-action" to="/courses">
-                Về danh sách khóa học
-              </Link>
-            </section>
-          </aside>
-        </div>
       </div>
 
-      {courseFormOpen && (
-        <CourseForm
-          initialCourse={course}
-          onClose={() => setCourseFormOpen(false)}
-          onSubmit={submitCourse}
-          saving={saving}
-          submitError={submitError}
-        />
-      )}
+        {courseFormOpen && (
+          <CourseForm
+            initialCourse={course}
+            onClose={() => setCourseFormOpen(false)}
+            onSubmit={submitCourse}
+            saving={saving}
+            submitError={submitError}
+          />
+        )}
 
-      {curriculumForm && (
-        <CurriculumModal
-          courseId={courseId}
-          kind={curriculumForm.kind}
-          initial={curriculumForm.module && curriculumForm.kind === 'module' ? curriculumForm.module : curriculumForm.lesson}
-          title={`${curriculumForm.module || curriculumForm.lesson ? 'Sửa' : 'Thêm'} ${curriculumForm.kind === 'module' ? 'học phần' : 'bài học'}`}
-          onClose={() => setCurriculumForm(null)}
-          onSubmit={submitCurriculum}
-          saving={saving}
-          submitError={submitError}
-        />
-      )}
+        {curriculumForm && (
+          <CurriculumModal
+            courseId={courseId}
+            kind={curriculumForm.kind}
+            initial={curriculumForm.module && curriculumForm.kind === 'module' ? curriculumForm.module : curriculumForm.lesson}
+            title={`${curriculumForm.module || curriculumForm.lesson ? 'Sửa' : 'Thêm'} ${curriculumForm.kind === 'module' ? 'học phần' : 'bài học'}`}
+            onClose={() => setCurriculumForm(null)}
+            onSubmit={submitCurriculum}
+            saving={saving}
+            submitError={submitError}
+          />
+        )}
     </main>
   );
 }

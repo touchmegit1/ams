@@ -178,71 +178,71 @@ function CourseManagementPage() {
       link.download = `${studentCourse.courseCode || 'AMS'}-students.csv`;
       link.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success('Đã tải danh sách sinh viên CSV');
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  };
-
-  const isManager = user?.role === 'TEACHER' || user?.role === 'ADMIN';
-  const visibleStudents = useMemo(() => students.filter((student) => {
-    const matchesSearch = !studentSearch.trim() || `${student.fullName} ${student.email}`.toLowerCase().includes(studentSearch.trim().toLowerCase());
-    return matchesSearch && (studentStatus === 'ALL' || student.status === studentStatus);
-  }), [students, studentSearch, studentStatus]);
-
-  if (!isManager) {
-    return (
-      <main className="cm-page">
-        <section className="cm-empty-state">
-          <h1>Quản lý khóa học dành cho giảng viên</h1>
-          <p>Tài khoản của bạn không có quyền quản lý khóa học.</p>
-          <Link to="/dashboard" className="cm-button cm-button-primary">Về tổng quan</Link>
-        </section>
-      </main>
-    );
+    toast.success('Đã tải danh sách sinh viên CSV');
+  } catch (error) {
+    toast.error(errorMessage(error));
   }
+};
 
+const isManager = user?.role === 'TEACHER' || user?.role === 'ADMIN';
+const visibleStudents = useMemo(() => students.filter((student) => {
+  const matchesSearch = !studentSearch.trim() || `${student.fullName} ${student.email}`.toLowerCase().includes(studentSearch.trim().toLowerCase());
+  return matchesSearch && (studentStatus === 'ALL' || student.status === studentStatus);
+}), [students, studentSearch, studentStatus]);
+
+if (!isManager) {
   return (
     <main className="cm-page">
-      <div className="cm-container">
-        <div className="cm-breadcrumb">
-          <Link to="/dashboard">Tổng quan</Link>
-          <span>/</span>
-          <strong>Khóa học</strong>
+      <section className="cm-empty-state">
+        <h1>Quản lý khóa học dành cho giảng viên</h1>
+        <p>Tài khoản của bạn không có quyền quản lý khóa học.</p>
+        <Link to="/dashboard" className="cm-button cm-button-primary">Về tổng quan</Link>
+      </section>
+    </main>
+  );
+}
+
+return (
+  <main className="cm-page">
+    <div className="cm-container">
+      <div className="cm-breadcrumb">
+        <Link to="/dashboard">Tổng quan</Link>
+        <span>/</span>
+        <strong>Khóa học</strong>
+      </div>
+
+      <section className="cm-page-heading">
+        <div>
+          <p className="cm-eyebrow">KHÔNG GIAN GIẢNG DẠY</p>
+          <h1>Quản lý khóa học</h1>
+          <p>Tạo khóa học, sắp xếp học phần, quản lý bài học và theo dõi kết quả của sinh viên.</p>
         </div>
+        <button className="cm-button cm-button-primary" onClick={openCreate}>＋ Tạo khóa học</button>
+      </section>
 
-        <section className="cm-page-heading">
-          <div>
-            <p className="cm-eyebrow">KHÔNG GIAN GIẢNG DẠY</p>
-            <h1>Quản lý khóa học</h1>
-            <p>Tạo khóa học, sắp xếp học phần, quản lý bài học và theo dõi kết quả của sinh viên.</p>
-          </div>
-          <button className="cm-button cm-button-primary" onClick={openCreate}>＋ Tạo khóa học</button>
-        </section>
+      <section className="cm-toolbar cm-course-filters" aria-label="Bộ lọc khóa học">
+        <label className="cm-search">
+          <span aria-hidden="true">⌕</span>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo mã, tên hoặc mô tả khóa học" />
+        </label>
+        <select aria-label="Lọc theo trạng thái" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="ALL">Tất cả trạng thái</option>
+          <option value="DRAFT">Bản nháp</option>
+          <option value="PUBLISHED">Đã xuất bản</option>
+          <option value="ARCHIVED">Đã lưu trữ</option>
+        </select>
+        <select aria-label="Lọc theo môn học" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
+          <option value="ALL">Tất cả môn học</option>
+          {subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
+        </select>
+        {(search || statusFilter !== 'ALL' || subjectFilter !== 'ALL') && (
+          <button className="cm-button cm-button-quiet" onClick={() => { setSearch(''); setStatusFilter('ALL'); setSubjectFilter('ALL'); }}>Đặt lại</button>
+        )}
+      </section>
 
-        <section className="cm-toolbar cm-course-filters" aria-label="Bộ lọc khóa học">
-          <label className="cm-search">
-            <span aria-hidden="true">⌕</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo mã, tên hoặc mô tả khóa học" />
-          </label>
-          <select aria-label="Lọc theo trạng thái" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="DRAFT">Bản nháp</option>
-            <option value="PUBLISHED">Đã xuất bản</option>
-            <option value="ARCHIVED">Đã lưu trữ</option>
-          </select>
-          <select aria-label="Lọc theo môn học" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
-            <option value="ALL">Tất cả môn học</option>
-            {subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
-          </select>
-          {(search || statusFilter !== 'ALL' || subjectFilter !== 'ALL') && (
-            <button className="cm-button cm-button-quiet" onClick={() => { setSearch(''); setStatusFilter('ALL'); setSubjectFilter('ALL'); }}>Đặt lại</button>
-          )}
-        </section>
+      {loadError && <div className="cm-alert" role="alert"><span>{loadError}</span><button onClick={loadCourses}>Thử lại</button></div>}
 
-        {loadError && <div className="cm-alert" role="alert"><span>{loadError}</span><button onClick={loadCourses}>Thử lại</button></div>}
-
-        <section className="cm-panel">
+      <section className="cm-panel">
           <div className="cm-panel-heading">
             <div>
               <h2>Khóa học của bạn</h2>
@@ -259,17 +259,17 @@ function CourseManagementPage() {
           </div>
 
           {loading ? (
-            <div className="cm-loading">Đang tải khóa học…</div>
-          ) : visibleCourses.length === 0 ? (
-            <div className="cm-empty-state">
-              <div className="cm-empty-icon">▤</div>
-              <h3>{courses.length ? 'Không tìm thấy khóa học phù hợp' : 'Bắt đầu với khóa học đầu tiên'}</h3>
-              <p>{courses.length ? 'Thử từ khóa hoặc bộ lọc khác.' : 'Thêm thông tin khóa học, sau đó tạo học phần và bài học.'}</p>
-              {!courses.length && <button className="cm-button cm-button-primary" onClick={openCreate}>Tạo khóa học</button>}
-            </div>
-          ) : (
-            <div className="cm-table-wrap">
-              <table className="cm-table cm-course-table">
+          <div className="cm-loading">Đang tải khóa học…</div>
+        ) : visibleCourses.length === 0 ? (
+          <div className="cm-empty-state">
+            <div className="cm-empty-icon">▤</div>
+            <h3>{courses.length ? 'Không tìm thấy khóa học phù hợp' : 'Bắt đầu với khóa học đầu tiên'}</h3>
+            <p>{courses.length ? 'Thử từ khóa hoặc bộ lọc khác.' : 'Thêm thông tin khóa học, sau đó tạo học phần và bài học.'}</p>
+            {!courses.length && <button className="cm-button cm-button-primary" onClick={openCreate}>Tạo khóa học</button>}
+          </div>
+        ) : (
+          <div className="cm-table-wrap">
+            <table className="cm-table cm-course-table">
                 <thead>
                   <tr>
                     <th>Mã khóa học</th>
@@ -356,197 +356,197 @@ function CourseManagementPage() {
                   ))}
                 </tbody>
               </table>
+          </div>
+        )}
+
+        {!loading && visibleCourses.length > 0 && (
+          <nav className="cm-pagination" aria-label="Các trang khóa học">
+            <span>Trang {currentPage} / {totalPages}</span>
+            <div className="cm-pagination-controls">
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} aria-label="Trang đầu">«</button>
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>Trước</button>
+              {pageNumbers.map((page) => typeof page === 'string' ? <span className="cm-page-gap" key={page}>…</span> : (
+                <button
+                  key={page}
+                  className={`cm-button cm-button-small cm-page-number${currentPage === page ? ' active' : ''}`}
+                  onClick={() => setCurrentPage(page)}
+                  aria-current={currentPage === page ? 'page' : undefined}
+                >
+                  {page}
+                </button>
+              ))}
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages}>Tiếp</button>
+              <button className="cm-button cm-button-small" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} aria-label="Trang cuối">»</button>
             </div>
-          )}
+          </nav>
+        )}
+      </section>
+    </div>
 
-          {!loading && visibleCourses.length > 0 && (
-            <nav className="cm-pagination" aria-label="Các trang khóa học">
-              <span>Trang {currentPage} / {totalPages}</span>
-              <div className="cm-pagination-controls">
-                <button className="cm-button cm-button-small" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} aria-label="Trang đầu">«</button>
-                <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>Trước</button>
-                {pageNumbers.map((page) => typeof page === 'string' ? <span className="cm-page-gap" key={page}>…</span> : (
-                  <button
-                    key={page}
-                    className={`cm-button cm-button-small cm-page-number${currentPage === page ? ' active' : ''}`}
-                    onClick={() => setCurrentPage(page)}
-                    aria-current={currentPage === page ? 'page' : undefined}
-                  >
-                    {page}
-                  </button>
-                ))}
-                <button className="cm-button cm-button-small" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages}>Tiếp</button>
-                <button className="cm-button cm-button-small" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} aria-label="Trang cuối">»</button>
+    {showForm && (
+      <CourseForm
+        initialCourse={editingCourse}
+        onClose={() => setShowForm(false)}
+        onSubmit={saveCourse}
+        saving={saving}
+        submitError={submitError}
+      />
+    )}
+
+    {studentCourse && (
+      <div
+        className="cm-modal-backdrop"
+        role="presentation"
+        onMouseDown={(event) => { if (event.target === event.currentTarget) setStudentCourse(null); }}
+      >
+        <section className="cm-modal cm-students-modal" role="dialog" aria-modal="true" aria-labelledby="course-students-title">
+          <header className="cm-modal-header">
+            <div>
+              <p className="cm-eyebrow">QUẢN LÝ KHÓA HỌC</p>
+              <h2 id="course-students-title">Sinh viên · {studentCourse.title}</h2>
+            </div>
+            <button className="cm-icon-button" type="button" onClick={() => setStudentCourse(null)} aria-label="Đóng">×</button>
+          </header>
+          <div className="cm-modal-body">
+            {studentAnalytics && (
+              <div className="cm-analytics-grid">
+                <div><strong>{studentAnalytics.activeStudents}</strong><span>Đang học</span></div>
+                <div><strong>{studentAnalytics.submissionsToReview}</strong><span>Bài cần duyệt</span></div>
+                <div><strong>{studentAnalytics.upcomingAssignments}</strong><span>Sắp đến hạn</span></div>
+                <div><strong>{studentAnalytics.studentsWithOverdueAssignments}</strong><span>Sinh viên trễ hạn</span></div>
+                <div><strong>{studentAnalytics.averageProgressPercent}%</strong><span>Tiến độ trung bình</span></div>
+                <button type="button" className="cm-button cm-button-quiet" onClick={exportStudents}>Tải CSV</button>
               </div>
-            </nav>
-          )}
-        </section>
-      </div>
+            )}
 
-      {showForm && (
-        <CourseForm
-          initialCourse={editingCourse}
-          onClose={() => setShowForm(false)}
-          onSubmit={saveCourse}
-          saving={saving}
-          submitError={submitError}
-        />
-      )}
-
-      {studentCourse && (
-        <div
-          className="cm-modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => { if (event.target === event.currentTarget) setStudentCourse(null); }}
-        >
-          <section className="cm-modal cm-students-modal" role="dialog" aria-modal="true" aria-labelledby="course-students-title">
-            <header className="cm-modal-header">
-              <div>
-                <p className="cm-eyebrow">QUẢN LÝ KHÓA HỌC</p>
-                <h2 id="course-students-title">Sinh viên · {studentCourse.title}</h2>
-              </div>
-              <button className="cm-icon-button" type="button" onClick={() => setStudentCourse(null)} aria-label="Đóng">×</button>
-            </header>
-            <div className="cm-modal-body">
-              {studentAnalytics && (
-                <div className="cm-analytics-grid">
-                  <div><strong>{studentAnalytics.activeStudents}</strong><span>Đang học</span></div>
-                  <div><strong>{studentAnalytics.submissionsToReview}</strong><span>Bài cần duyệt</span></div>
-                  <div><strong>{studentAnalytics.upcomingAssignments}</strong><span>Sắp đến hạn</span></div>
-                  <div><strong>{studentAnalytics.studentsWithOverdueAssignments}</strong><span>Sinh viên trễ hạn</span></div>
-                  <div><strong>{studentAnalytics.averageProgressPercent}%</strong><span>Tiến độ trung bình</span></div>
+            {studentProfile ? (
+              <section className="cm-student-profile">
+                <button type="button" className="cm-button cm-button-quiet" onClick={() => setStudentProfile(null)}>
+                  ← Danh sách sinh viên
+                </button>
+                <h3>{studentProfile.fullName}</h3>
+                <p>{studentProfile.email} · {studentProfile.status === 'ACTIVE' ? 'Đang học' : studentProfile.status}</p>
+                {studentProfile.status === 'ACTIVE' ? (
+                  <>
+                    <div className="cm-profile-stats">
+                      <span>Lesson: {studentProfile.completedLessons}/{studentProfile.totalLessons} ({studentProfile.lessonProgressPercent}%)</span>
+                      <span>Bài tập: {studentProfile.completedAssignments}/{studentProfile.requiredAssignments} ({studentProfile.assignmentProgressPercent}%)</span>
+                      <span>Tổng tiến độ: {studentProfile.overallProgressPercent}%</span>
+                      <span>Điểm TB: {studentProfile.averageScorePercent == null ? 'Chưa có điểm' : `${studentProfile.averageScorePercent}%`}</span>
+                      <span>Bài quá hạn: {studentProfile.overdueAssignments}</span>
+                    </div>
+                    <h4>Tiến độ bài học</h4>
+                    <ul className="cm-profile-list">
+                      {studentProfile.lessons?.map((lesson) => (
+                        <li key={lesson.lessonId}>
+                          <span>{lesson.title}</span>
+                          <strong>{lesson.completed ? `Hoàn thành · ${new Date(lesson.completedAt).toLocaleDateString('vi-VN')}` : 'Chưa hoàn thành'}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <h4>Bài tập và kết quả</h4>
+                    <ul className="cm-profile-list">
+                      {studentProfile.assignments?.map((assignment) => (
+                        <li key={assignment.assignmentId}>
+                          <span>
+                            {assignment.title}
+                            <small>{assignment.submissionStatus || assignment.status}{assignment.lastSubmittedAt ? ` · nộp ${new Date(assignment.lastSubmittedAt).toLocaleDateString('vi-VN')}` : ''}</small>
+                          </span>
+                          <strong>{assignment.score == null ? 'Chưa chấm' : `${assignment.score}/${assignment.maxScore} (${assignment.scorePercent}%)`}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p>Tiến độ học chỉ có sau khi thanh toán và ghi danh được kích hoạt.</p>
+                )}
+              </section>
+            ) : (
+              <>
+                <div className="cm-roster-heading">
+                  <p>{students.length} lượt ghi danh trong khóa học</p>
                   <button type="button" className="cm-button cm-button-quiet" onClick={exportStudents}>Tải CSV</button>
                 </div>
-              )}
-
-              {studentProfile ? (
-                <section className="cm-student-profile">
-                  <button type="button" className="cm-button cm-button-quiet" onClick={() => setStudentProfile(null)}>
-                    ← Danh sách sinh viên
-                  </button>
-                  <h3>{studentProfile.fullName}</h3>
-                  <p>{studentProfile.email} · {studentProfile.status === 'ACTIVE' ? 'Đang học' : studentProfile.status}</p>
-                  {studentProfile.status === 'ACTIVE' ? (
-                    <>
-                      <div className="cm-profile-stats">
-                        <span>Lesson: {studentProfile.completedLessons}/{studentProfile.totalLessons} ({studentProfile.lessonProgressPercent}%)</span>
-                        <span>Bài tập: {studentProfile.completedAssignments}/{studentProfile.requiredAssignments} ({studentProfile.assignmentProgressPercent}%)</span>
-                        <span>Tổng tiến độ: {studentProfile.overallProgressPercent}%</span>
-                        <span>Điểm TB: {studentProfile.averageScorePercent == null ? 'Chưa có điểm' : `${studentProfile.averageScorePercent}%`}</span>
-                        <span>Bài quá hạn: {studentProfile.overdueAssignments}</span>
-                      </div>
-                      <h4>Tiến độ bài học</h4>
-                      <ul className="cm-profile-list">
-                        {studentProfile.lessons?.map((lesson) => (
-                          <li key={lesson.lessonId}>
-                            <span>{lesson.title}</span>
-                            <strong>{lesson.completed ? `Hoàn thành · ${new Date(lesson.completedAt).toLocaleDateString('vi-VN')}` : 'Chưa hoàn thành'}</strong>
-                          </li>
-                        ))}
-                      </ul>
-                      <h4>Bài tập và kết quả</h4>
-                      <ul className="cm-profile-list">
-                        {studentProfile.assignments?.map((assignment) => (
-                          <li key={assignment.assignmentId}>
-                            <span>
-                              {assignment.title}
-                              <small>{assignment.submissionStatus || assignment.status}{assignment.lastSubmittedAt ? ` · nộp ${new Date(assignment.lastSubmittedAt).toLocaleDateString('vi-VN')}` : ''}</small>
-                            </span>
-                            <strong>{assignment.score == null ? 'Chưa chấm' : `${assignment.score}/${assignment.maxScore} (${assignment.scorePercent}%)`}</strong>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <p>Tiến độ học chỉ có sau khi thanh toán và ghi danh được kích hoạt.</p>
-                  )}
-                </section>
-              ) : (
-                <>
-                  <div className="cm-roster-heading">
-                    <p>{students.length} lượt ghi danh trong khóa học</p>
-                    <button type="button" className="cm-button cm-button-quiet" onClick={exportStudents}>Tải CSV</button>
+                {students.length > 0 && (
+                  <div className="cm-toolbar">
+                    <label className="cm-search">
+                      <span aria-hidden="true">⌕</span>
+                      <input value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email sinh viên" />
+                    </label>
+                    <select aria-label="Lọc sinh viên theo trạng thái" value={studentStatus} onChange={(event) => setStudentStatus(event.target.value)}>
+                      <option value="ALL">Mọi trạng thái</option>
+                      <option value="ACTIVE">Đang học</option>
+                      <option value="PENDING">Chờ thanh toán</option>
+                      <option value="EXPIRED">Hết hạn</option>
+                    </select>
                   </div>
-                  {students.length > 0 && (
-                    <div className="cm-toolbar">
-                      <label className="cm-search">
-                        <span aria-hidden="true">⌕</span>
-                        <input value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email sinh viên" />
-                      </label>
-                      <select aria-label="Lọc sinh viên theo trạng thái" value={studentStatus} onChange={(event) => setStudentStatus(event.target.value)}>
-                        <option value="ALL">Mọi trạng thái</option>
-                        <option value="ACTIVE">Đang học</option>
-                        <option value="PENDING">Chờ thanh toán</option>
-                        <option value="EXPIRED">Hết hạn</option>
-                      </select>
-                    </div>
-                  )}
-                </>
-              )}
+                )}
+              </>
+            )}
 
-              {studentsError && <div className="cm-alert" role="alert">{studentsError}</div>}
-              {profileLoading && <div className="cm-loading">Đang tải hồ sơ…</div>}
-              {studentsLoading ? (
-                <div className="cm-loading">Đang tải danh sách sinh viên…</div>
-              ) : !studentProfile && students.length ? (
-                visibleStudents.length ? (
-                  <div className="cm-table-wrap">
-                    <table className="cm-table">
-                      <thead>
-                        <tr>
-                          <th>Sinh viên</th>
-                          <th>Ghi danh</th>
-                          <th>Lesson</th>
-                          <th>Bài tập</th>
-                          <th>Tiến độ chung</th>
-                          <th>Điểm TB</th>
-                          <th>Quá hạn</th>
-                          <th></th>
+            {studentsError && <div className="cm-alert" role="alert">{studentsError}</div>}
+            {profileLoading && <div className="cm-loading">Đang tải hồ sơ…</div>}
+            {studentsLoading ? (
+              <div className="cm-loading">Đang tải danh sách sinh viên…</div>
+            ) : !studentProfile && students.length ? (
+              visibleStudents.length ? (
+                <div className="cm-table-wrap">
+                  <table className="cm-table">
+                    <thead>
+                      <tr>
+                        <th>Sinh viên</th>
+                        <th>Ghi danh</th>
+                        <th>Lesson</th>
+                        <th>Bài tập</th>
+                        <th>Tiến độ chung</th>
+                        <th>Điểm TB</th>
+                        <th>Quá hạn</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleStudents.map((student) => (
+                        <tr key={student.studentId}>
+                          <td>
+                            <strong>{student.fullName}</strong>
+                            <small>{student.email}</small>
+                          </td>
+                          <td>{student.status === 'ACTIVE' ? 'Đang học' : student.status === 'PENDING' ? 'Chờ thanh toán' : student.status}</td>
+                          <td>{student.lessonProgressPercent == null ? '—' : `${student.completedLessons}/${student.totalLessons} · ${student.lessonProgressPercent}%`}</td>
+                          <td>{student.assignmentProgressPercent == null ? '—' : `${student.completedAssignments}/${student.requiredAssignments} · ${student.assignmentProgressPercent}%`}</td>
+                          <td>{student.overallProgressPercent == null ? '—' : `${student.overallProgressPercent}%`}</td>
+                          <td>{student.averageScorePercent == null ? '—' : `${student.averageScorePercent}%`}</td>
+                          <td>{student.overdueAssignments ?? '—'}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="cm-button cm-button-small"
+                              disabled={student.status !== 'ACTIVE'}
+                              onClick={() => openStudentProfile(student)}
+                            >
+                              Chi tiết
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {visibleStudents.map((student) => (
-                          <tr key={student.studentId}>
-                            <td>
-                              <strong>{student.fullName}</strong>
-                              <small>{student.email}</small>
-                            </td>
-                            <td>{student.status === 'ACTIVE' ? 'Đang học' : student.status === 'PENDING' ? 'Chờ thanh toán' : student.status}</td>
-                            <td>{student.lessonProgressPercent == null ? '—' : `${student.completedLessons}/${student.totalLessons} · ${student.lessonProgressPercent}%`}</td>
-                            <td>{student.assignmentProgressPercent == null ? '—' : `${student.completedAssignments}/${student.requiredAssignments} · ${student.assignmentProgressPercent}%`}</td>
-                            <td>{student.overallProgressPercent == null ? '—' : `${student.overallProgressPercent}%`}</td>
-                            <td>{student.averageScorePercent == null ? '—' : `${student.averageScorePercent}%`}</td>
-                            <td>{student.overdueAssignments ?? '—'}</td>
-                            <td>
-                              <button
-                                type="button"
-                                className="cm-button cm-button-small"
-                                disabled={student.status !== 'ACTIVE'}
-                                onClick={() => openStudentProfile(student)}
-                              >
-                                Chi tiết
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="cm-empty-state"><h3>Không tìm thấy sinh viên</h3></div>
-                )
-              ) : !studentProfile && !studentsError && !profileLoading && (
-                <div className="cm-empty-state"><h3>Chưa có sinh viên đăng ký</h3></div>
-              )}
-            </div>
-            <footer className="cm-modal-footer">
-              <button type="button" className="cm-button cm-button-quiet" onClick={() => setStudentCourse(null)}>Đóng</button>
-            </footer>
-          </section>
-        </div>
-      )}
-    </main>
-  );
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="cm-empty-state"><h3>Không tìm thấy sinh viên</h3></div>
+              )
+            ) : !studentProfile && !studentsError && !profileLoading && (
+              <div className="cm-empty-state"><h3>Chưa có sinh viên đăng ký</h3></div>
+            )}
+          </div>
+          <footer className="cm-modal-footer">
+            <button type="button" className="cm-button cm-button-quiet" onClick={() => setStudentCourse(null)}>Đóng</button>
+          </footer>
+        </section>
+      </div>
+    )}
+  </main>
+);
 }
 
 export default CourseManagementPage;

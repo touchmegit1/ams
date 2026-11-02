@@ -160,7 +160,7 @@ export default function AssignmentListPage({ templates = false }) {
         </div>
       )}
       {!loading && !error && <Pagination data={data} page={page} onChange={setPage} />}
-    </section>
+  </section >
     <ConfirmDialog action={action} busy={busy} onCancel={() => setAction(null)} onConfirm={confirm} />
   </>;
 }
