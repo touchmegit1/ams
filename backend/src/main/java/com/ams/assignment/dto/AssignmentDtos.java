@@ -16,7 +16,7 @@ public final class AssignmentDtos {
                            @NotBlank @Pattern(regexp="SINGLE|MULTIPLE") String type,
                            @NotNull @Size(min=2, max=10) List<@NotBlank @Size(max=1000) String> options,
                            @NotEmpty List<@NotNull Integer> correctAnswers) {}
-    public record Write(@NotNull Integer subjectId, Integer templateId,
+    public record Write(@NotNull Integer subjectId, Integer lessonId, Integer templateId,
                         @NotBlank @Size(max=200) String title,
                         @NotBlank @Size(max=8000) String description,
                         @NotNull @Future LocalDateTime dueDate,
@@ -26,6 +26,8 @@ public final class AssignmentDtos {
                         @NotEmpty @Size(max=30) List<@NotNull @Valid Criterion> rubric,
                         @Pattern(regexp="DOCUMENT|QUIZ") String assignmentType,
                         @Size(max=100) List<@NotNull @Valid Question> questions) {}
+    public record QuizAnswer(@NotNull Integer questionIndex, @NotEmpty List<@NotNull Integer> selectedOptions) {}
+    public record QuizSubmit(@NotEmpty @Size(max=100) List<@NotNull @Valid QuizAnswer> answers) {}
     public record Generate(@NotNull Integer subjectId, @NotBlank @Size(max=4000) String topic,
                            @NotBlank @Pattern(regexp="Easy|Medium|Hard") String difficulty) {}
     public record Draft(@NotBlank @Size(max=200) String title, @NotBlank @Size(max=8000) String description,

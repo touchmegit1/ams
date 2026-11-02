@@ -6,6 +6,7 @@ import com.ams.coursemgmt.dto.request.ReorderRequest;
 import com.ams.coursemgmt.dto.response.LessonResponse;
 import com.ams.coursemgmt.dto.response.ModuleResponse;
 import com.ams.coursemgmt.service.CourseManagementService;
+import com.ams.enrollment.service.CourseStudentService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,9 +20,16 @@ import java.util.List;
 public class CourseStructureController {
 
     private final CourseManagementService courseService;
+    private final CourseStudentService studentService;
 
-    public CourseStructureController(CourseManagementService courseService) {
+    public CourseStructureController(CourseManagementService courseService, CourseStudentService studentService) {
         this.courseService = courseService;
+        this.studentService = studentService;
+    }
+
+    @GetMapping("/students")
+    public List<java.util.Map<String, Object>> listStudents(Authentication authentication, @PathVariable Integer courseId) {
+        return studentService.list(courseId, authentication);
     }
 
     @GetMapping("/modules")

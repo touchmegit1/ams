@@ -5,6 +5,7 @@ import com.ams.assignment.entity.*;
 import com.ams.assignment.entity.Assignment.*;
 import com.ams.assignment.exception.AssignmentException;
 import com.ams.assignment.repository.*;
+import com.ams.coursemgmt.repository.LessonRepository;
 import com.ams.auth.repository.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +29,7 @@ public class AssignmentService {
     private final UserRepository users;
     private final ObjectMapper json;
     private final JdbcTemplate jdbc;
+    private final LessonRepository lessons;
 
     private boolean admin(Authentication auth) { return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")); }
     private int userId(Authentication auth) { return Integer.parseInt(auth.getName()); }
@@ -46,12 +48,13 @@ public class AssignmentService {
         subject(a.getSubjectId(),auth); return a;
     }
     private Pageable pageable(int page,int size) { if(page<0 || size<1 || size>100) throw new AssignmentException(400,"Phân trang không hợp lệ"); return PageRequest.of(page,size,Sort.by(Sort.Direction.DESC,"updatedAt").and(Sort.by(Sort.Direction.DESC,"id"))); }
-    public Map<String,Object> list(String keyword,Integer subjectId,Source source,Status status,int page,int size,Authentication auth) {
+    public Map<String,Object> list(String keyword,Integer subjectId,Integer lessonId,Source source,Status status,int page,int size,Authentication auth) {
         List<Integer> ids = admin(auth) ? null : subjectIds(auth);
         Specification<Assignment> spec = (root,q,cb) -> {
             List<Predicate> p = new ArrayList<>();
             if(ids!=null) p.add(root.get("subjectId").in(ids));
             if(subjectId!=null) p.add(cb.equal(root.get("subjectId"),subjectId));
+            if(lessonId!=null) p.add(cb.equal(root.get("lessonId"),lessonId));
             if(source!=null) p.add(cb.equal(root.get("source"),source));
             p.add(status==null ? cb.notEqual(root.get("status"),Status.ARCHIVED) : cb.equal(root.get("status"),status));
             if(keyword!=null && !keyword.isBlank()) p.add(cb.like(cb.lower(root.get("title")),"%"+escape(keyword.toLowerCase().trim())+"%",'!'));
@@ -82,6 +85,7 @@ public class AssignmentService {
     public Map<String,Object> view(Assignment a) {
         Map<String,Object> m=new LinkedHashMap<>();
         m.put("id",a.getId()); m.put("subjectId",a.getSubjectId()); m.put("subjectName",courses.findById(a.getSubjectId()).map(Course::getTitle).orElse("—"));
+        m.put("lessonId",a.getLessonId()); m.put("lessonTitle",a.getLessonId()==null ? null : lessons.findById(a.getLessonId()).map(l->l.getTitle()).orElse(null));
         m.put("assignmentType",a.getAssignmentType()==null ? "DOCUMENT" : a.getAssignmentType()); m.put("questions",questions(a.getQuestionsJson()));
         m.put("title",a.getTitle()); m.put("description",a.getDescription()); m.put("rubric",rubric(a.getRubricJson()));
         m.put("dueDate",a.getDueDate()); m.put("maxScore",a.getMaxScore()); m.put("source",a.getSource()); m.put("status",a.getStatus());
@@ -126,6 +130,10 @@ public class AssignmentService {
         Assignment a=id==null ? new Assignment() : owned(id,auth);
         if(a.getStatus()!=Status.DRAFT && a.getStatus()!=Status.PUBLISHED) throw new AssignmentException(409,"Chỉ sửa được bài nháp hoặc bài đang mở");
         subject(w.subjectId(),auth); validateRubric(w.rubric());
+        if(w.lessonId()!=null) {
+            var lesson=lessons.findById(w.lessonId()).orElseThrow(()->new AssignmentException(404,"Không tìm thấy bài học","lessonId"));
+            if(!lesson.getModule().getCourse().getCourseId().equals(w.subjectId())) throw new AssignmentException(400,"Bài học không thuộc khóa học đã chọn","lessonId");
+        }
         String type=w.assignmentType()==null ? "DOCUMENT" : w.assignmentType();
         validateQuestions(type,w.questions());
         a.setAssignmentType(type); a.setQuestionsJson(encode("QUIZ".equals(type) ? w.questions() : List.of()));
@@ -138,7 +146,7 @@ public class AssignmentService {
         if(w.source()==Source.AI && (w.aiPrompt()==null || w.aiPrompt().isBlank())) throw new AssignmentException(400,"Thiếu yêu cầu tạo đề AI","aiPrompt");
         if(id==null) a.setCreatedBy(userId(auth));
         a.setSource(w.source()); a.setTemplateId(w.templateId()); a.setAiPrompt(w.aiPrompt());
-        a.setSubjectId(w.subjectId()); a.setTitle(w.title().trim()); a.setDescription(w.description().trim());
+        a.setSubjectId(w.subjectId()); a.setLessonId(w.lessonId()); a.setTitle(w.title().trim()); a.setDescription(w.description().trim());
         a.setDueDate(w.dueDate()); a.setMaxScore(w.maxScore()); a.setAllowedFileTypes(String.join(",",w.allowedFileTypes())); a.setRubricJson(encode(w.rubric()));
         assignments.saveAndFlush(a);
         if(id==null && a.getTemplateId()!=null) templates.incrementUsage(a.getTemplateId());

@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .requestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").denyAll()
                 // Tất cả các request khác cần authenticate
                 .requestMatchers("/api/assignments/**", "/api/assignment-templates/**", "/api/subjects").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers("/api/courses/*/students").hasAnyRole("TEACHER", "ADMIN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, ex) -> {

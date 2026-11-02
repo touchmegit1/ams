@@ -12,6 +12,7 @@ public class Assignment {
     public enum Source { MANUAL, AI, TEMPLATE }
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "assignment_id") private Integer id;
     @Column(name = "course_id", nullable = false) private Integer subjectId;
+    @Column(name = "lesson_id") private Integer lessonId;
     @Column(nullable = false, length = 200) private String title;
     @Column(nullable = false, columnDefinition = "TEXT") private String description;
     @Column(name = "grading_rubric", nullable = false, columnDefinition = "TEXT") private String rubricJson;
