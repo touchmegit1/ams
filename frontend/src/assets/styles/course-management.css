@@ -210,3 +210,308 @@
 .course-workspace .cm-modal-backdrop { background: #14271dc2; }
 .course-workspace .cm-icon-button:hover:not(:disabled) { border-color: #9db9a6; color: #254737; background: #f4f8f5; }
 .course-workspace .cm-button:focus-visible, .course-workspace .cm-icon-button:focus-visible, .course-workspace .cm-inspector-action:focus-visible, .course-workspace .cm-add-lesson:focus-visible { outline: 3px solid #9db9a6; outline-offset: 2px; }
+.cm-analytics-grid{display:grid;grid-template-columns:repeat(5,minmax(100px,1fr)) auto;gap:10px;margin:6px 0 20px}.cm-analytics-grid>div{display:grid;gap:5px;padding:12px;border:1px solid #dce7df;border-radius:10px;background:#f7faf7}.cm-analytics-grid>div strong{font-size:21px;color:#245e44}.cm-analytics-grid>div span,.cm-roster-heading p{font-size:12px;color:#6c8174}.cm-roster-heading{display:flex;align-items:center;justify-content:space-between}.cm-student-profile{margin:16px 0;padding:18px;border:1px solid #dae5dc;border-radius:12px;background:#fbfdfb}.cm-student-profile h3{margin:14px 0 4px}.cm-profile-stats{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.cm-profile-stats span{padding:8px 10px;border-radius:8px;background:#edf5ef;color:#2f664b;font-size:13px}.cm-profile-list{list-style:none;padding:0;margin:0 0 18px}.cm-profile-list li{display:flex;justify-content:space-between;gap:18px;padding:10px 0;border-bottom:1px solid #e7eee9}.cm-profile-list li span{display:grid;gap:4px}.cm-profile-list small{color:#71877a}.cm-profile-list strong{font-size:13px;text-align:right}@media(max-width:900px){.cm-analytics-grid{grid-template-columns:repeat(3,minmax(100px,1fr))}}@media(max-width:600px){.cm-analytics-grid{grid-template-columns:repeat(2,minmax(100px,1fr))}.cm-profile-list li{display:grid;gap:6px}.cm-profile-list strong{text-align:left}}
+
+/* ======================================================== */
+/* Teacher Workspace Course Hub: Tabs, Roster & Progress    */
+/* ======================================================== */
+
+.cm-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 0 18px;
+  border-bottom: 2px solid #e3eae5;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cm-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.cm-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  color: #5d6f64;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+}
+
+.cm-tab-btn:hover {
+  color: #245e44;
+  background: #f0f7f3;
+  border-radius: 8px 8px 0 0;
+}
+
+.cm-tab-btn.active {
+  color: #245e44;
+  border-bottom-color: #245e44;
+  font-weight: 750;
+}
+
+.cm-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e4eee7;
+  color: #245e44;
+  line-height: 1;
+}
+
+.cm-tab-btn.active .cm-tab-count {
+  background: #245e44;
+  color: #ffffff;
+}
+
+/* Learning Progress Columns in Table */
+.cm-progress-cell {
+  display: grid;
+  gap: 5px;
+  min-width: 130px;
+}
+
+.cm-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e7ede8;
+  overflow: hidden;
+}
+
+.cm-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #315b49;
+  transition: width .3s ease;
+}
+
+.cm-progress-text {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  color: #68796f;
+}
+
+.cm-progress-text strong {
+  color: #26334a;
+  font-weight: 700;
+}
+
+/* Status Tags & Overdue Pill */
+.cm-overdue-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 750;
+  color: #b83440;
+  background: #fdebed;
+  border: 1px solid #f6cfd3;
+}
+
+.cm-ok-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #207a58;
+  background: #e5f6ee;
+}
+
+/* Course Student Profile Card */
+.cm-student-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid #dce6de;
+  border-radius: 12px;
+  background: #ffffff;
+  margin-bottom: 20px;
+}
+
+.cm-student-profile-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cm-student-avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #d6e8da;
+  color: #234332;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.cm-student-profile-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr));
+  gap: 12px;
+  margin: 20px 0 28px;
+}
+
+.cm-student-kpi {
+  padding: 14px 16px;
+  border: 1px solid #dce7df;
+  border-radius: 10px;
+  background: #ffffff;
+  display: grid;
+  gap: 6px;
+}
+
+.cm-student-kpi span {
+  font-size: 11px;
+  color: #68796f;
+  font-weight: 650;
+}
+
+.cm-student-kpi strong {
+  font-size: 20px;
+  color: #213e31;
+}
+
+.cm-student-kpi.is-warning {
+  border-color: #f7d4d7;
+  background: #fff8f8;
+}
+
+.cm-student-kpi.is-warning strong {
+  color: #b83440;
+}
+
+.cm-profile-sections-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.cm-profile-box {
+  padding: 20px;
+  border: 1px solid #dce6de;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.cm-profile-box h3 {
+  font-size: 15px;
+  color: #1e2c24;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #edf2ee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cm-lesson-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f2f5f3;
+  font-size: 13px;
+}
+
+.cm-lesson-item:last-child {
+  border-bottom: 0;
+}
+
+.cm-lesson-done {
+  color: #207a58;
+  font-weight: 650;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cm-lesson-not-done {
+  color: #8c9790;
+  font-size: 12px;
+}
+
+.cm-assignment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f2f5f3;
+}
+
+.cm-assignment-item:last-child {
+  border-bottom: 0;
+}
+
+.cm-assignment-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cm-assignment-item-title {
+  font-weight: 700;
+  color: #233128;
+  font-size: 13px;
+}
+
+.cm-assignment-item-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: #6a7c71;
+}
+
+/* Course Assignments Tab Toolbar & Table */
+.cm-assignments-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .cm-student-profile-kpis {
+    grid-template-columns: repeat(3, minmax(100px, 1fr));
+  }
+  .cm-profile-sections-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

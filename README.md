@@ -12,6 +12,7 @@ Hệ thống quản lý khóa học gồm frontend React/Vite và backend Spring
 
 - `frontend/` – ứng dụng React, mã nguồn trong `src/`
 - `backend/` – API Spring Boot; mã nguồn trong `src/main/java/`, cấu hình trong `src/main/resources/`, kiểm thử trong `src/test/`
+- `docs/ams-project-design.md` – các luồng AMS và bộ sơ đồ thiết kế theo đầu ra đồ án
 
 ## Chạy backend
 

@@ -62,6 +62,17 @@ CREATE TABLE lessons (
     CONSTRAINT fk_lessons_module FOREIGN KEY (module_id) REFERENCES modules(module_id) ON DELETE CASCADE
 );
 
+CREATE TABLE lesson_progress (
+    progress_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    lesson_id INT NOT NULL,
+    completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_lesson_progress_student_lesson UNIQUE (student_id, lesson_id),
+    CONSTRAINT fk_lesson_progress_student FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_lesson_progress_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(lesson_id) ON DELETE CASCADE,
+    INDEX idx_lesson_progress_lesson (lesson_id)
+);
+
 CREATE TABLE assignment_templates (
     template_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(200) NOT NULL,

@@ -10,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import java.net.http.*;
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.assertj.core.api.Assertions.*;
@@ -55,5 +56,19 @@ class GeminiAiServiceTest {
         when(response.statusCode()).thenReturn(429);
         assertThatThrownBy(()->service.generate(request,auth)).isInstanceOfSatisfying(AssignmentException.class,e->assertThat(e.getStatus()).isEqualTo(502));
         verify(response,never()).body();
+    }
+    @Test void evaluatesSubmissionAgainstRubricAndReturnsStructuredFeedback() throws Exception {
+        when(response.body()).thenReturn(envelope("{\"score\":8,\"summary\":\"Đáp ứng tốt yêu cầu\",\"items\":[{\"criteria\":\"Code\",\"score\":8,\"maxScore\":10,\"feedback\":\"Có kiểm thử\"}],\"model\":\"test-model\"}"));
+        Evaluation result=service.evaluate("API", "Build a REST API", new BigDecimal("10.00"),
+            List.of(new Criterion("Code", "Correctness", new BigDecimal("100"))), "Notes", Map.of("answer.txt", "evidence"));
+        assertThat(result.score()).isEqualByComparingTo("8");
+        assertThat(result.items()).singleElement().extracting(EvaluationItem::criteria).isEqualTo("Code");
+        assertThat(result.model()).isEqualTo("test-model");
+    }
+    @Test void evaluationRejectsScoreOutsideMaximum() throws Exception {
+        when(response.body()).thenReturn(envelope("{\"score\":11,\"summary\":\"Too high\",\"items\":[{\"criteria\":\"Code\",\"score\":11,\"maxScore\":10,\"feedback\":\"Score exceeds limit\"}],\"model\":\"test-model\"}"));
+        assertThatThrownBy(()->service.evaluate("API", "Build API", new BigDecimal("10"),
+            List.of(new Criterion("Code", "Correctness", new BigDecimal("100"))), "", Map.of("answer.txt", "evidence")))
+            .isInstanceOfSatisfying(AssignmentException.class,e->assertThat(e.getStatus()).isEqualTo(502));
     }
 }

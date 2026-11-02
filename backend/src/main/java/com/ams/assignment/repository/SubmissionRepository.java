@@ -13,4 +13,5 @@ public interface SubmissionRepository extends JpaRepository<Submission, Integer>
     Optional<Submission> findByIdAndStudent_UserId(Integer submissionId, Integer studentId);
     Page<Submission> findAllByAssignment_IdOrderBySubmittedAtDescIdDesc(Integer assignmentId, Pageable pageable);
     boolean existsByAssignment_IdAndStudent_UserId(Integer assignmentId, Integer studentId);
+    List<Submission> findAllByAssignment_IdInOrderBySubmittedAtDesc(List<Integer> assignmentIds);
 }

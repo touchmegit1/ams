@@ -5,6 +5,7 @@ import com.ams.assignment.entity.Assignment;
 import com.ams.assignment.entity.QuizAttempt;
 import com.ams.assignment.entity.Assignment.Status;
 import com.ams.assignment.repository.QuizAttemptRepository;
+import com.ams.assignment.repository.SubmissionRepository;
 import com.ams.assignment.dto.AssignmentDtos.QuizSubmit;
 import com.ams.assignment.dto.AssignmentDtos.QuizAnswer;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +28,7 @@ public class StudentAssignmentService {
     private final EnrollmentRepository enrollments;
     private final AssignmentService assignmentService;
     private final QuizAttemptRepository attempts;
+    private final SubmissionRepository submissions;
     private final ObjectMapper json;
 
     private int studentId(Authentication auth) { return Integer.parseInt(auth.getName()); }
@@ -97,8 +99,18 @@ public class StudentAssignmentService {
         Map<String, Object> view = assignmentService.view(assignment);
         view.remove("aiPrompt");
         view.remove("templateId");
-        view.put("attempts", attempts.findAllByAssignmentIdAndStudentIdOrderBySubmittedAtDesc(assignment.getId(), studentId).stream()
-            .map(a -> Map.of("attemptId", a.getId(), "score", a.getScore(), "submittedAt", a.getSubmittedAt())).toList());
+        List<Map<String,Object>> history = new ArrayList<>();
+        attempts.findAllByAssignmentIdAndStudentIdOrderBySubmittedAtDesc(assignment.getId(), studentId).forEach(a -> {
+            Map<String,Object> item = new LinkedHashMap<>(); item.put("attemptId", "quiz-" + a.getId()); item.put("score", a.getScore());
+            item.put("submittedAt", a.getSubmittedAt()); item.put("source", "LEGACY_QUIZ"); history.add(item);
+        });
+        submissions.findAllByAssignment_IdAndStudent_UserIdOrderByAttemptNumberAsc(assignment.getId(), studentId).forEach(s -> {
+            Map<String,Object> item = new LinkedHashMap<>(); item.put("attemptId", "submission-" + s.getId());
+            item.put("score", s.getTeacherScore() != null ? s.getTeacherScore() : s.getAiScore()); item.put("submittedAt", s.getSubmittedAt());
+            item.put("status", s.getStatus()); item.put("source", "SUBMISSION"); history.add(item);
+        });
+        history.sort((left, right) -> ((java.time.LocalDateTime)right.get("submittedAt")).compareTo((java.time.LocalDateTime)left.get("submittedAt")));
+        view.put("attempts", history);
         if ("QUIZ".equals(view.get("assignmentType"))) {
             @SuppressWarnings("unchecked") List<Question> questions = (List<Question>) view.get("questions");
             view.put("questions", questions.stream().map(q -> Map.of(

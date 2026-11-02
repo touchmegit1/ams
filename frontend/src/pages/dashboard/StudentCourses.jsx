@@ -17,8 +17,8 @@ function StudentLessonQuiz({ quiz }) {
   const submit = async (event) => {
     event.preventDefault(); setSubmitting(true); setError('');
     try {
-      const payload = { answers: quiz.questions.map((_, questionIndex) => ({ questionIndex, selectedOptions: answers[questionIndex] || [] })) };
-      const { data } = await api.post(`/student/assignments/${quiz.id}/attempts`, payload);
+      const form = new FormData(); form.append("answersJson", JSON.stringify(quiz.questions.map((_, questionIndex) => answers[questionIndex] || [])));
+      const { data } = await api.post(`/student/assignments/${quiz.id}/submissions`, form, { headers: { "Content-Type": "multipart/form-data" } });
       setResult(data); setStarted(false); setAnswers({});
     } catch (requestError) { setError(requestError.response?.data?.message || 'Không thể nộp bài.'); }
     finally { setSubmitting(false); }
@@ -26,7 +26,7 @@ function StudentLessonQuiz({ quiz }) {
   const latest = quiz.attempts?.[0];
   return <div className="sc-lesson-quiz"><div className="sc-lesson-quiz-head"><div><strong>{quiz.title}</strong><small>{quiz.questions?.length || 0} câu · {quiz.maxScore} điểm · {quiz.status === 'CLOSED' ? 'Đã đóng' : 'Đang mở'}</small></div>{!started && quiz.status === 'PUBLISHED' && <button onClick={() => { setResult(null); setStarted(true); }}>Làm bài</button>}</div>
     {latest && <p className="sc-quiz-history">Lần gần nhất: {latest.score}/{quiz.maxScore} điểm</p>}
-    {result && <p className="sc-quiz-result" role="status">Bạn đạt {result.score}/{result.maxScore} điểm ({result.correctCount}/{result.questionCount} câu đúng).</p>}
+    {result && <p className="sc-quiz-result" role="status">Bạn đạt {result.aiScore}/{quiz.maxScore} điểm.</p>}
     {error && <p className="sc-quiz-error" role="alert">{error}</p>}
     {started && <form className="sc-quiz-form" onSubmit={submit}>{quiz.questions?.map((question, questionIndex) => <fieldset key={questionIndex}><legend>{questionIndex + 1}. {question.text}</legend>{question.options.map((option, optionIndex) => <label key={optionIndex}><input type={question.type === 'MULTIPLE' ? 'checkbox' : 'radio'} name={`lesson-quiz-${quiz.id}-${questionIndex}`} checked={(answers[questionIndex] || []).includes(optionIndex)} onChange={() => choose(questionIndex, optionIndex, question.type === 'MULTIPLE')} />{option}</label>)}</fieldset>)}<button type="submit" disabled={submitting || Object.keys(answers).length !== (quiz.questions?.length || 0)}>{submitting ? 'Đang nộp…' : 'Nộp bài'}</button><button type="button" onClick={() => setStarted(false)}>Hủy</button></form>}
   </div>;
@@ -39,6 +39,9 @@ function StudentCourses({ initialView = 'catalog', initialCourseId, onCourseChan
   const [openId, setOpenId] = useState(null);
   const [modules, setModules] = useState({});
   const [quizAssignments, setQuizAssignments] = useState([]);
+  const [courseProgress, setCourseProgress] = useState(null);
+  const [progressError, setProgressError] = useState('');
+  const [progressBusy, setProgressBusy] = useState(null);
   const [moduleError, setModuleError] = useState('');
   const [enrollments, setEnrollments] = useState([]);
   const [busyId, setBusyId] = useState(null);
@@ -89,6 +92,15 @@ function StudentCourses({ initialView = 'catalog', initialCourseId, onCourseChan
         .catch((requestError) => setModuleError(requestError.response?.data?.message || 'Không thể tải nội dung khóa học.'));
     }
   }, [initialCourseId]);
+  const selectedEnrollmentActive = enrollments.some((item) => item.courseId === selectedId && item.status === 'ACTIVE');
+  useEffect(() => {
+    if (!selectedEnrollmentActive || !selectedId) { setCourseProgress(null); return; }
+    let active = true;
+    setProgressError('');
+    api.get(`/student/courses/${selectedId}/progress`).then(({ data }) => { if (active) setCourseProgress(data); })
+      .catch((requestError) => { if (active) setProgressError(requestError.response?.data?.message || 'Không thể tải tiến độ học.'); });
+    return () => { active = false; };
+  }, [selectedId, selectedEnrollmentActive]);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
 
   const enroll = async (courseId) => {
@@ -104,6 +116,23 @@ function StudentCourses({ initialView = 'catalog', initialCourseId, onCourseChan
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Không thể đăng ký khóa học.');
     } finally { setBusyId(null); }
+  };
+
+  const markLessonComplete = async (lessonId) => {
+    setProgressBusy(lessonId); setProgressError('');
+    try {
+      const { data } = await api.post(`/student/lessons/${lessonId}/complete`);
+      setCourseProgress((current) => {
+        if (!current) return current;
+        const isNew = current.lessons?.some((lesson) => lesson.lessonId === lessonId && !lesson.completed);
+        const completedLessons = current.completedLessons + (isNew ? 1 : 0);
+        const lessonProgressPercent = current.totalLessons ? Number((completedLessons * 100 / current.totalLessons).toFixed(2)) : 100;
+        return { ...current, completedLessons, lessonProgressPercent,
+          overallProgressPercent: Number(((lessonProgressPercent + Number(current.assignmentProgressPercent || 0)) / 2).toFixed(2)),
+          lessons: current.lessons?.map((lesson) => lesson.lessonId === lessonId ? { ...lesson, completed: true, completedAt: data.completedAt } : lesson) };
+      });
+    } catch (requestError) { setProgressError(requestError.response?.data?.message || 'Không thể cập nhật tiến độ bài học.'); }
+    finally { setProgressBusy(null); }
   };
 
   const pendingIds = enrollments.filter((item) => item.status === 'PENDING').map((item) => item.enrollmentId).filter(Boolean).join(',');
@@ -181,7 +210,7 @@ function StudentCourses({ initialView = 'catalog', initialCourseId, onCourseChan
   const action = (course, registration) => { const status = statusFor(registration); return status === 'ACTIVE' ? <p className="sc-active"><FiCheckCircle /> Đã đăng ký · Có thể học</p> : status === 'PENDING' ? <p className="sc-waiting"><FiClock /> Đang chờ thanh toán</p> : <button className="sc-primary" disabled={busyId === course.courseId || course.archived} onClick={() => enroll(course.courseId)}>{busyId === course.courseId ? 'Đang xử lý…' : status === 'EXPIRED' ? 'Tạo thanh toán mới' : Number(course.price) === 0 ? 'Học miễn phí' : 'Đăng ký khóa học'} <FiArrowRight /></button>; };
   if (loading) return <p className="student-courses-message">Đang tải khóa học…</p>;
   if (error && !displayed.length) return <div className="student-courses-message" role="alert"><p>{error}</p><button onClick={loadCourses}>Thử lại</button></div>;
-  if (selected) { const registration = enrollments.find((item) => item.courseId === selected.courseId); const status = statusFor(registration); const lessons = modules[selected.courseId] || []; return <div className="student-courses sc-detail"><button className="sc-back" onClick={() => { setSelectedId(null); onCourseChange?.(null); }}><FiArrowLeft /> Trở lại danh sách</button>{error && <p className="sc-error" role="alert">{error}</p>}<div className="sc-detail-grid"><div className="sc-detail-main"><p className="sc-kicker">{selected.subject || 'KHÓA HỌC'} / {selected.courseCode || 'AMS'}</p><h2>{selected.title}</h2><div className="sc-meta"><span><FiBookOpen /> {lessons.length} học phần</span>{selected.targetAudience && <span>{selected.targetAudience}</span>}</div>{selected.teacherName && <p className="sc-instructor">Giảng viên đứng lớp: <strong>{selected.teacherName}</strong></p>}<p className="sc-description">{selected.description || 'Khám phá kiến thức và nội dung học tập của khóa học này.'}</p><section className="sc-curriculum"><div className="sc-section-heading"><div><p>NỘI DUNG HỌC TẬP</p><h3>Chương trình khóa học</h3></div><span>{lessons.length} học phần</span></div>{moduleError ? <p className="sc-error" role="alert">{moduleError}</p> : !modules[selected.courseId] ? <p>Đang tải học phần…</p> : !lessons.length ? <p>Khóa học chưa có học phần.</p> : <div className="sc-module-list">{lessons.map((module, index) => <div className="sc-module" key={module.moduleId}><button className="sc-module-heading" aria-expanded={!!expanded[module.moduleId]} onClick={() => setExpanded((value) => ({ ...value, [module.moduleId]: !value[module.moduleId] }))}><b>{String(index + 1).padStart(2, '0')}</b><span><strong>{module.title}</strong><small>{module.lessons?.length || 0} bài học</small></span><FiChevronDown /></button>{expanded[module.moduleId] && <div className="sc-lessons">{module.lessons?.map((lesson) => <div className="sc-lesson" key={lesson.lessonId}><FiBookOpen /><div><strong>{lesson.title}</strong>{status === 'ACTIVE' ? quizAssignments.filter((quiz) => quiz.lessonId === lesson.lessonId && quiz.assignmentType === 'QUIZ' && ['PUBLISHED', 'CLOSED'].includes(quiz.status)).map((quiz) => <StudentLessonQuiz key={quiz.id} quiz={quiz} />) : <small>Nội dung mở sau khi đăng ký</small>}</div>{status !== 'ACTIVE' && <FiLock />}</div>)}</div>}</div>)}</div>}</section></div><aside className="sc-purchase"><div className="sc-cover sc-cover-large"><span>{selected.courseCode || 'AMS'}</span><FiBookOpen /><strong>{selected.subject || 'KHÓA HỌC'}</strong></div><div className="sc-purchase-body"><small>HỌC PHÍ KHÓA HỌC</small><strong className="sc-price">{selected.archived ? 'Đã đăng ký' : formatCoursePrice(selected.price)}</strong>{action(selected, registration)}<p>{status === 'ACTIVE' ? 'Bạn có thể xem toàn bộ bài học.' : 'Xem trước học phần trước khi đăng ký.'}</p></div>{status === 'PENDING' && <div className="sc-payment"><p>Thời gian còn lại <strong>{countdown(registration)}</strong></p><img src={registration.qrUrl} alt={'QR thanh toán khóa ' + selected.title} /><dl><div><dt>Ngân hàng</dt><dd>{registration.bank}</dd></div><div><dt>Số tài khoản</dt><dd>{registration.accountNumber}</dd></div><div><dt>Số tiền</dt><dd>{formatCoursePrice(registration.amount)}</dd></div><div><dt>Nội dung</dt><dd>{registration.transferContent}</dd></div></dl><span className="sc-auto-check" role="status">Hệ thống tự cập nhật khi nhận được thanh toán.</span></div>}{status === 'EXPIRED' && <p className="sc-expired">Yêu cầu thanh toán đã hết hạn. Tạo lượt mới để tiếp tục.</p>}</aside></div>{successModal}</div>; }
+  if (selected) { const registration = enrollments.find((item) => item.courseId === selected.courseId); const status = statusFor(registration); const lessons = modules[selected.courseId] || []; return <div className="student-courses sc-detail"><button className="sc-back" onClick={() => { setSelectedId(null); onCourseChange?.(null); }}><FiArrowLeft /> Trở lại danh sách</button>{error && <p className="sc-error" role="alert">{error}</p>}<div className="sc-detail-grid"><div className="sc-detail-main"><p className="sc-kicker">{selected.subject || 'KHÓA HỌC'} / {selected.courseCode || 'AMS'}</p><h2>{selected.title}</h2><div className="sc-meta"><span><FiBookOpen /> {lessons.length} học phần</span>{selected.targetAudience && <span>{selected.targetAudience}</span>}</div>{selected.teacherName && <p className="sc-instructor">Giảng viên đứng lớp: <strong>{selected.teacherName}</strong></p>}<p className="sc-description">{selected.description || 'Khám phá kiến thức và nội dung học tập của khóa học này.'}</p><section className="sc-curriculum"><div className="sc-section-heading"><div><p>NỘI DUNG HỌC TẬP</p><h3>Chương trình khóa học</h3></div><span>{lessons.length} học phần</span></div>{status === 'ACTIVE' && courseProgress && <div className="sc-progress-summary"><strong>Tiến độ khóa học · {courseProgress.overallProgressPercent}%</strong><span>Lesson {courseProgress.completedLessons}/{courseProgress.totalLessons} ({courseProgress.lessonProgressPercent}%)</span><span>Bài tập {courseProgress.completedAssignments}/{courseProgress.requiredAssignments} ({courseProgress.assignmentProgressPercent}%)</span></div>}{progressError && <p className="sc-error" role="alert">{progressError}</p>}{moduleError ? <p className="sc-error" role="alert">{moduleError}</p> : !modules[selected.courseId] ? <p>Đang tải học phần…</p> : !lessons.length ? <p>Khóa học chưa có học phần.</p> : <div className="sc-module-list">{lessons.map((module, index) => <div className="sc-module" key={module.moduleId}><button className="sc-module-heading" aria-expanded={!!expanded[module.moduleId]} onClick={() => setExpanded((value) => ({ ...value, [module.moduleId]: !value[module.moduleId] }))}><b>{String(index + 1).padStart(2, '0')}</b><span><strong>{module.title}</strong><small>{module.lessons?.length || 0} bài học</small></span><FiChevronDown /></button>{expanded[module.moduleId] && <div className="sc-lessons">{module.lessons?.map((lesson) => <div className="sc-lesson" key={lesson.lessonId}><FiBookOpen /><div><strong>{lesson.title}</strong>{status === 'ACTIVE' ? <><button className="sc-lesson-complete" disabled={progressBusy === lesson.lessonId || courseProgress?.lessons?.some((row) => row.lessonId === lesson.lessonId && row.completed)} onClick={() => markLessonComplete(lesson.lessonId)}>{courseProgress?.lessons?.some((row) => row.lessonId === lesson.lessonId && row.completed) ? '✓ Đã hoàn thành' : progressBusy === lesson.lessonId ? 'Đang lưu…' : 'Đánh dấu hoàn thành'}</button>{quizAssignments.filter((quiz) => quiz.lessonId === lesson.lessonId && quiz.assignmentType === 'QUIZ' && ['PUBLISHED', 'CLOSED'].includes(quiz.status)).map((quiz) => <StudentLessonQuiz key={quiz.id} quiz={quiz} />)}</> : <small>Nội dung mở sau khi đăng ký</small>}</div>{status !== 'ACTIVE' && <FiLock />}</div>)}</div>}</div>)}</div>}</section></div><aside className="sc-purchase"><div className="sc-cover sc-cover-large"><span>{selected.courseCode || 'AMS'}</span><FiBookOpen /><strong>{selected.subject || 'KHÓA HỌC'}</strong></div><div className="sc-purchase-body"><small>HỌC PHÍ KHÓA HỌC</small><strong className="sc-price">{selected.archived ? 'Đã đăng ký' : formatCoursePrice(selected.price)}</strong>{action(selected, registration)}<p>{status === 'ACTIVE' ? 'Bạn có thể xem toàn bộ bài học.' : 'Xem trước học phần trước khi đăng ký.'}</p></div>{status === 'PENDING' && <div className="sc-payment"><p>Thời gian còn lại <strong>{countdown(registration)}</strong></p><img src={registration.qrUrl} alt={'QR thanh toán khóa ' + selected.title} /><dl><div><dt>Ngân hàng</dt><dd>{registration.bank}</dd></div><div><dt>Số tài khoản</dt><dd>{registration.accountNumber}</dd></div><div><dt>Số tiền</dt><dd>{formatCoursePrice(registration.amount)}</dd></div><div><dt>Nội dung</dt><dd>{registration.transferContent}</dd></div></dl><span className="sc-auto-check" role="status">Hệ thống tự cập nhật khi nhận được thanh toán.</span></div>}{status === 'EXPIRED' && <p className="sc-expired">Yêu cầu thanh toán đã hết hạn. Tạo lượt mới để tiếp tục.</p>}</aside></div>{successModal}</div>; }
   if (initialView === 'enrollment') {
     const registered = enrollments.map((item) => ({ enrollment: item, course: displayed.find((course) => course.courseId === item.courseId) })).filter((item) => item.course);
     const activeCount = registered.filter(({ enrollment }) => statusFor(enrollment) === 'ACTIVE').length;

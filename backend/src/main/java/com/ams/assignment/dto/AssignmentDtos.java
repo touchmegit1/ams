@@ -32,4 +32,12 @@ public final class AssignmentDtos {
                            @NotBlank @Pattern(regexp="Easy|Medium|Hard") String difficulty) {}
     public record Draft(@NotBlank @Size(max=200) String title, @NotBlank @Size(max=8000) String description,
                         @NotEmpty @Size(max=30) List<@NotNull @Valid Criterion> rubric, String model) {}
+    public record EvaluationItem(@NotBlank @Size(max=200) String criteria,
+                                 @NotNull @DecimalMin("0.00") BigDecimal score,
+                                 @NotNull @DecimalMin("0.00") BigDecimal maxScore,
+                                 @NotBlank @Size(max=4000) String feedback) {}
+    public record Evaluation(@NotNull @DecimalMin("0.00") BigDecimal score,
+                             @NotBlank @Size(max=8000) String summary,
+                             @NotNull @Size(max=30) List<@NotNull @Valid EvaluationItem> items,
+                             @NotBlank String model) {}
 }

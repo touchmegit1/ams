@@ -59,10 +59,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/webhooks/sepay").permitAll()
                 .requestMatchers("/api/enrollments/**", "/api/enrollments").hasRole("STUDENT")
                 .requestMatchers("/api/student/assignments/**", "/api/student/assignments").hasRole("STUDENT")
+                .requestMatchers("/api/student/courses/**", "/api/student/lessons/**").hasRole("STUDENT")
                 .requestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").denyAll()
                 // Tất cả các request khác cần authenticate
                 .requestMatchers("/api/assignments/**", "/api/assignment-templates/**", "/api/subjects").hasAnyRole("TEACHER", "ADMIN")
-                .requestMatchers("/api/courses/*/students").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers("/api/courses/*/students/**", "/api/courses/*/analytics", "/api/teacher/overview").hasAnyRole("TEACHER", "ADMIN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, ex) -> {

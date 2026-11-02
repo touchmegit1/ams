@@ -9,6 +9,8 @@ import com.ams.coursemgmt.service.CourseManagementService;
 import com.ams.enrollment.service.CourseStudentService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,8 +30,29 @@ public class CourseStructureController {
     }
 
     @GetMapping("/students")
-    public List<java.util.Map<String, Object>> listStudents(Authentication authentication, @PathVariable Integer courseId) {
-        return studentService.list(courseId, authentication);
+    public List<java.util.Map<String, Object>> listStudents(Authentication authentication, @PathVariable Integer courseId,
+                                                            @RequestParam(required = false) String search,
+                                                            @RequestParam(required = false) String status) {
+        return studentService.list(courseId, authentication, search, status);
+    }
+
+    @GetMapping("/students/{studentId}")
+    public java.util.Map<String,Object> studentProgress(Authentication authentication, @PathVariable Integer courseId, @PathVariable Integer studentId) {
+        return studentService.student(courseId, studentId, authentication);
+    }
+
+    @GetMapping("/analytics")
+    public java.util.Map<String,Object> analytics(Authentication authentication, @PathVariable Integer courseId) {
+        return studentService.analytics(courseId, authentication);
+    }
+
+    @GetMapping("/students/export.csv")
+    public ResponseEntity<byte[]> exportStudents(Authentication authentication, @PathVariable Integer courseId,
+                                                 @RequestParam(required = false) String search,
+                                                 @RequestParam(required = false) String status) {
+        byte[] csv = studentService.exportCsv(courseId, authentication, search, status);
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=course-" + courseId + "-students.csv")
+            .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8")).body(csv);
     }
 
     @GetMapping("/modules")

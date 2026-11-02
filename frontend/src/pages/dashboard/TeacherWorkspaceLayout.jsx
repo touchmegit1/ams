@@ -8,6 +8,7 @@ import '../../assets/styles/course-management.css';
 const teacherSections = [
   { id: 'home', label: 'Trang chủ' },
   { id: 'courses', label: 'Khóa học' },
+  { id: 'assignments', label: 'Bài tập' },
 ];
 
 const studentCourseSections = [
@@ -21,8 +22,10 @@ export default function TeacherWorkspaceLayout() {
   const navigate = useWorkspaceNavigate();
   const { pathname } = useLocation();
   const isManager = user?.role === 'TEACHER' || user?.role === 'ADMIN';
+
   const onSelect = (id) => {
     if (id === 'courses') navigate('/courses');
+    else if (id === 'assignments') navigate('/teacher/assignments');
     else navigate('/dashboard');
   };
 
@@ -44,7 +47,11 @@ export default function TeacherWorkspaceLayout() {
 
   return (
     <div className="dashboard-container course-workspace">
-      <WorkspaceHeader sections={teacherSections} activeId={pathname.startsWith('/courses') ? 'courses' : 'home'} onSelect={onSelect} />
+      <WorkspaceHeader
+        sections={teacherSections}
+        activeId={pathname.startsWith('/courses') ? 'courses' : pathname.startsWith('/teacher') ? 'assignments' : 'home'}
+        onSelect={onSelect}
+      />
       <Outlet />
     </div>
   );
