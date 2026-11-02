@@ -25,6 +25,12 @@ function CourseManagementPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [studentCourse, setStudentCourse] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsError, setStudentsError] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentStatus, setStudentStatus] = useState('ALL');
 
   const loadCourses = useCallback(async () => {
     setLoading(true);
@@ -115,7 +121,18 @@ function CourseManagementPage() {
     }
   };
 
+  const openStudents = async (course) => {
+    setStudentCourse(course); setStudents([]); setStudentsError(''); setStudentSearch(''); setStudentStatus('ALL'); setStudentsLoading(true);
+    try { const { data } = await api.get(`/courses/${course.courseId}/students`); setStudents(Array.isArray(data) ? data : []); }
+    catch (error) { setStudentsError(errorMessage(error)); }
+    finally { setStudentsLoading(false); }
+  };
+
   const isManager = user?.role === 'TEACHER' || user?.role === 'ADMIN';
+  const visibleStudents = useMemo(() => students.filter((student) => {
+    const matchesSearch = !studentSearch.trim() || `${student.fullName} ${student.email}`.toLowerCase().includes(studentSearch.trim().toLowerCase());
+    return matchesSearch && (studentStatus === 'ALL' || student.status === studentStatus);
+  }), [students, studentSearch, studentStatus]);
 
   if (!isManager) {
     return (
@@ -166,7 +183,7 @@ function CourseManagementPage() {
                     <td>{formatCoursePrice(course.price)}</td>
                     <td><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{courseStatusLabel[course.status] || course.status}</span></td>
                     <td>{course.updatedAt ? new Date(course.updatedAt).toLocaleDateString('vi-VN') : course.createdAt ? new Date(course.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
-                    <td><div className="cm-row-actions"><button className="cm-button cm-button-small" onClick={() => navigate(`/courses/${course.courseId}`)}>Chương trình học</button><button className="cm-button cm-button-small cm-button-quiet" onClick={() => openEdit(course)}>Sửa</button><button className="cm-button cm-button-small cm-button-danger" onClick={() => deleteCourse(course)}>Xóa</button></div></td>
+                    <td><div className="cm-row-actions"><button className="cm-button cm-button-small" onClick={() => navigate(`/courses/${course.courseId}`)}>Chương trình học</button><button className="cm-button cm-button-small cm-button-quiet" onClick={() => openStudents(course)}>Sinh viên</button><button className="cm-button cm-button-small cm-button-quiet" onClick={() => openEdit(course)}>Sửa</button><button className="cm-button cm-button-small cm-button-danger" onClick={() => deleteCourse(course)}>Xóa</button></div></td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -186,6 +203,7 @@ function CourseManagementPage() {
       </div>
 
       {showForm && <CourseForm initialCourse={editingCourse} onClose={() => setShowForm(false)} onSubmit={saveCourse} saving={saving} submitError={submitError} />}
+      {studentCourse && <div className="cm-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setStudentCourse(null); }}><section className="cm-modal cm-students-modal" role="dialog" aria-modal="true" aria-labelledby="course-students-title"><header className="cm-modal-header"><div><p className="cm-eyebrow">QUẢN LÝ KHÓA HỌC</p><h2 id="course-students-title">Sinh viên · {studentCourse.title}</h2></div><button className="cm-icon-button" type="button" onClick={() => setStudentCourse(null)} aria-label="Đóng">×</button></header><div className="cm-modal-body"><p>{students.length} sinh viên đã đăng ký · Điểm quiz là trung bình các lượt làm bài đã nộp.</p>{students.length > 0 && <div className="cm-toolbar"><label className="cm-search"><span aria-hidden="true">⌕</span><input value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email sinh viên" /></label><select aria-label="Lọc sinh viên theo trạng thái" value={studentStatus} onChange={(event) => setStudentStatus(event.target.value)}><option value="ALL">Mọi trạng thái</option><option value="ACTIVE">Đang học</option><option value="PENDING">Chờ thanh toán</option></select></div>}{studentsError && <div className="cm-alert" role="alert">{studentsError}</div>}{studentsLoading ? <div className="cm-loading">Đang tải danh sách sinh viên…</div> : students.length ? visibleStudents.length ? <div className="cm-table-wrap"><table className="cm-table"><thead><tr><th>Sinh viên</th><th>Trạng thái</th><th>Lượt làm quiz</th><th>Điểm trung bình</th><th>Ngày đăng ký</th></tr></thead><tbody>{visibleStudents.map((student) => <tr key={student.studentId}><td><strong>{student.fullName}</strong><small>{student.email}</small></td><td>{student.status === 'ACTIVE' ? 'Đang học' : student.status === 'PENDING' ? 'Chờ thanh toán' : student.status}</td><td>{student.quizAttempts}</td><td>{student.quizAttempts ? student.averageScore : '—'}</td><td>{student.createdAt ? new Date(student.createdAt).toLocaleDateString('vi-VN') : '—'}</td></tr>)}</tbody></table></div> : <div className="cm-empty-state"><h3>Không tìm thấy sinh viên</h3></div> : !studentsError && <div className="cm-empty-state"><h3>Chưa có sinh viên đăng ký</h3></div>}</div><footer className="cm-modal-footer"><button className="cm-button cm-button-quiet" onClick={() => setStudentCourse(null)}>Đóng</button></footer></section></div>}
     </main>
   );
 }

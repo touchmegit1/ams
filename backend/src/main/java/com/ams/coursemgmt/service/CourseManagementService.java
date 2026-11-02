@@ -75,7 +75,7 @@ public class CourseManagementService {
                 .map(module -> ModuleResponse.from(module,
                         lessonRepository.findAllByModule_ModuleIdOrderByOrderIndexAscLessonIdAsc(module.getModuleId())
                                 .stream().map(lesson -> enrolled ? LessonResponse.from(lesson)
-                                        : new LessonResponse(lesson.getLessonId(), lesson.getTitle(), null, null, lesson.getOrderIndex())).toList()))
+                                        : new LessonResponse(lesson.getLessonId(), lesson.getTitle(), lesson.getOrderIndex())).toList()))
                 .toList();
     }
 
@@ -266,8 +266,6 @@ public class CourseManagementService {
 
     private void apply(Lesson lesson, LessonRequest request) {
         lesson.setTitle(request.title().trim());
-        lesson.setContent(blankToNull(request.content()));
-        lesson.setVideoUrl(blankToNull(request.videoUrl()));
     }
 
     private String normalizeCode(String code) {

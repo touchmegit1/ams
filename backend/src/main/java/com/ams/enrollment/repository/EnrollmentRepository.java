@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Optional<Enrollment> findByStudent_UserIdAndCourse_CourseId(Integer studentId, Integer courseId);
     List<Enrollment> findAllByStudent_UserIdOrderByCreatedAtDesc(Integer studentId);
+    List<Enrollment> findAllByCourse_CourseIdOrderByCreatedAtDesc(Integer courseId);
     boolean existsByCourse_CourseId(Integer courseId);
     boolean existsByStudent_UserIdAndCourse_CourseIdAndStatus(Integer studentId, Integer courseId, EnrollmentStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

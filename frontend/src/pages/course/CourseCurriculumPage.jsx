@@ -3,18 +3,19 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api.js';
 import CourseForm from '../../components/course/CourseForm.jsx';
+import LessonAssignments from '../../components/course/LessonAssignments.jsx';
 import { courseStatusLabel, formatCoursePrice } from './courseUi.js';
 import '../../assets/styles/course-management.css';
 
 const errorMessage = (error) => error.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';
 
-function CurriculumModal({ title, initial, kind, onClose, onSubmit, saving, submitError }) {
+function CurriculumModal({ title, initial, kind, courseId, onClose, onSubmit, saving, submitError }) {
   const isLesson = kind === 'lesson';
   const handleSubmit = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const payload = isLesson
-      ? { title: form.get('title').trim(), content: form.get('content').trim(), videoUrl: form.get('videoUrl').trim() || null, orderIndex: initial?.orderIndex || null }
+      ? { title: form.get('title').trim(), orderIndex: initial?.orderIndex || null }
       : { title: form.get('title').trim(), orderIndex: initial?.orderIndex || null };
     await onSubmit(payload);
   };
@@ -28,10 +29,7 @@ function CurriculumModal({ title, initial, kind, onClose, onSubmit, saving, subm
         <form onSubmit={handleSubmit}>
           <div className="cm-modal-body">
             <label className="cm-field"><span>{isLesson ? 'Tên bài học' : 'Tên học phần'} <b>*</b></span><input name="title" required maxLength="200" defaultValue={initial?.title || ''} autoFocus placeholder={isLesson ? 'Nhập tên bài học' : 'Nhập tên học phần'} /></label>
-            {isLesson && <>
-              <label className="cm-field"><span>Nội dung bài học</span><textarea name="content" maxLength="100000" rows="8" defaultValue={initial?.content || ''} placeholder="Viết nội dung hoặc hướng dẫn cho bài học." /></label>
-              <label className="cm-field"><span>Liên kết video</span><input name="videoUrl" type="url" maxLength="500" defaultValue={initial?.videoUrl || ''} placeholder="https://…" /></label>
-            </>}
+            {isLesson && <LessonAssignments courseId={courseId} lesson={initial} />}
             {submitError && <p className="cm-form-error" role="alert">{submitError}</p>}
           </div>
           <footer className="cm-modal-footer"><button className="cm-button cm-button-quiet" type="button" onClick={onClose} disabled={saving}>Hủy</button><button className="cm-button cm-button-primary" type="submit" disabled={saving}>{saving ? 'Đang lưu…' : initial ? 'Lưu thay đổi' : `Thêm ${isLesson ? 'bài học' : 'học phần'}`}</button></footer>
@@ -91,6 +89,7 @@ function CourseCurriculumPage() {
     setSaving(true);
     setSubmitError('');
     try {
+      let createdLesson = null;
       if (curriculumForm.kind === 'module') {
         const module = curriculumForm.module;
         if (module) await api.put(`/courses/${courseId}/modules/${module.moduleId}`, payload);
@@ -98,10 +97,11 @@ function CourseCurriculumPage() {
       } else {
         const { module, lesson } = curriculumForm;
         if (lesson) await api.put(`/courses/${courseId}/modules/${module.moduleId}/lessons/${lesson.lessonId}`, payload);
-        else await api.post(`/courses/${courseId}/modules/${module.moduleId}/lessons`, payload);
+        else ({ data: createdLesson } = await api.post(`/courses/${courseId}/modules/${module.moduleId}/lessons`, payload));
       }
       setCurriculumForm(null);
       await load();
+      if (createdLesson) setCurriculumForm({ kind: 'lesson', module: curriculumForm.module, lesson: createdLesson });
       toast.success('Đã lưu chương trình học');
     } catch (error) {
       setSubmitError(errorMessage(error));
@@ -181,7 +181,7 @@ function CourseCurriculumPage() {
 
         <div className="cm-curriculum-layout">
         <section className="cm-panel cm-curriculum-panel">
-          <div className="cm-panel-heading"><div><h2>Chương trình học</h2><p>Sắp xếp học phần và thêm nội dung cho từng bài học.</p></div><button className="cm-button cm-button-primary" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module: null }); }}>＋ Thêm học phần</button></div>
+          <div className="cm-panel-heading"><div><h2>Chương trình học</h2><p>Sắp xếp học phần, bài học và bài trắc nghiệm gắn với từng bài.</p></div><button className="cm-button cm-button-primary" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module: null }); }}>＋ Thêm học phần</button></div>
           {modules.length === 0 ? (
             <div className="cm-empty-state"><div className="cm-empty-icon">▤</div><h3>Chưa có học phần</h3><p>Tạo học phần đầu tiên để xây dựng khóa học.</p><button className="cm-button cm-button-primary" onClick={() => { setSubmitError(''); setCurriculumForm({ kind: 'module', module: null }); }}>Thêm học phần đầu tiên</button></div>
           ) : (
@@ -202,7 +202,7 @@ function CourseCurriculumPage() {
                     {module.lessons.map((lesson, lessonIndex) => (
                       <div className="cm-lesson-row" key={lesson.lessonId}>
                         <div className="cm-lesson-number">{moduleIndex + 1}.{lessonIndex + 1}</div>
-                        <div className="cm-lesson-main"><strong>{lesson.title}</strong>{lesson.content && <p>{lesson.content}</p>}{lesson.videoUrl && <a href={lesson.videoUrl} target="_blank" rel="noreferrer">Mở video bài học ↗</a>}</div>
+                        <div className="cm-lesson-main"><strong>{lesson.title}</strong></div>
                         <div className="cm-row-actions">
                           <button className="cm-icon-button" aria-label="Đưa bài học lên" disabled={lessonIndex === 0} onClick={() => moveLesson(module, lessonIndex, -1)}>↑</button>
                           <button className="cm-icon-button" aria-label="Đưa bài học xuống" disabled={lessonIndex === module.lessons.length - 1} onClick={() => moveLesson(module, lessonIndex, 1)}>↓</button>
@@ -226,7 +226,7 @@ function CourseCurriculumPage() {
       </div>
 
       {courseFormOpen && <CourseForm initialCourse={course} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} saving={saving} submitError={submitError} />}
-      {curriculumForm && <CurriculumModal kind={curriculumForm.kind} initial={curriculumForm.module && curriculumForm.kind === 'module' ? curriculumForm.module : curriculumForm.lesson} title={`${curriculumForm.module || curriculumForm.lesson ? 'Sửa' : 'Thêm'} ${curriculumForm.kind === 'module' ? 'học phần' : 'bài học'}`} onClose={() => setCurriculumForm(null)} onSubmit={submitCurriculum} saving={saving} submitError={submitError} />}
+      {curriculumForm && <CurriculumModal courseId={courseId} kind={curriculumForm.kind} initial={curriculumForm.module && curriculumForm.kind === 'module' ? curriculumForm.module : curriculumForm.lesson} title={`${curriculumForm.module || curriculumForm.lesson ? 'Sửa' : 'Thêm'} ${curriculumForm.kind === 'module' ? 'học phần' : 'bài học'}`} onClose={() => setCurriculumForm(null)} onSubmit={submitCurriculum} saving={saving} submitError={submitError} />}
     </main>
   );
 }

@@ -1,6 +1,8 @@
 package com.ams.assignment.controller;
 
 import com.ams.assignment.service.StudentAssignmentService;
+import com.ams.assignment.dto.AssignmentDtos.QuizSubmit;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,5 +23,10 @@ public class StudentAssignmentController {
     @GetMapping("/{id}")
     public Map<String, Object> detail(@PathVariable Integer id, Authentication auth) {
         return service.detail(id, auth);
+    }
+
+    @PostMapping("/{id}/attempts")
+    public Map<String, Object> submit(@PathVariable Integer id, @Valid @RequestBody QuizSubmit submission, Authentication auth) {
+        return service.submit(id, submission, auth);
     }
 }

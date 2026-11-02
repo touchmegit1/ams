@@ -80,6 +80,7 @@ CREATE TABLE assignment_templates (
 CREATE TABLE assignments (
     assignment_id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
+    lesson_id INT,
     title VARCHAR(200) NOT NULL,
     description TEXT NOT NULL,
     grading_rubric TEXT NOT NULL,
@@ -97,10 +98,24 @@ CREATE TABLE assignments (
     questions_json LONGTEXT,
     version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT fk_assignments_course FOREIGN KEY (course_id) REFERENCES courses(course_id),
+    CONSTRAINT fk_assignments_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(lesson_id) ON DELETE SET NULL,
     CONSTRAINT fk_assignments_template FOREIGN KEY (template_id) REFERENCES assignment_templates(template_id),
     CONSTRAINT fk_assignments_creator FOREIGN KEY (created_by) REFERENCES users(user_id),
     INDEX idx_assignments_deadline (status, due_date),
-    INDEX idx_assignments_course (course_id, status)
+    INDEX idx_assignments_course (course_id, status),
+    INDEX idx_assignments_lesson (lesson_id, status)
+);
+
+CREATE TABLE quiz_attempts (
+    attempt_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    assignment_id INT NOT NULL,
+    student_id INT NOT NULL,
+    answers_json LONGTEXT NOT NULL,
+    score DECIMAL(7,2) NOT NULL,
+    submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_quiz_attempt_assignment FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id) ON DELETE CASCADE,
+    CONSTRAINT fk_quiz_attempt_student FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    INDEX idx_quiz_attempt_student_assignment (student_id, assignment_id)
 );
 
 -- Legacy submissions table remains for assignment statistics.
