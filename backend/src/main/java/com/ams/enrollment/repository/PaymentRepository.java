@@ -12,4 +12,5 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByOrderCode(String orderCode);
     boolean existsBySepayTransactionId(Long transactionId);
     List<Payment> findAllByStatusAndExpiresAtBefore(PaymentStatus status, Instant now);
+    List<Payment> findAllByEnrollment_IdInOrderByCreatedAtDescIdDesc(List<Long> enrollmentIds);
 }

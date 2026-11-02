@@ -22,7 +22,7 @@ function CourseManagementPage() {
   const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(() => searchParams.get('create') === '1');
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
 

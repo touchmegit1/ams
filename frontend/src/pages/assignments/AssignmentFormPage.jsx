@@ -43,6 +43,8 @@ export default function AssignmentFormPage({ review = false }) {
         } else if (!resume && query.get('templateId')) {
           const item = await templateService.get(query.get('templateId'));
           if (active) { setForm((f) => ({ ...f, templateId: item.id, subjectId: item.subjectId || '', title: item.name, description: item.description, maxScore: item.defaultMaxScore, rubric: item.rubric, source: 'TEMPLATE' })); setDirty(true); }
+        } else if (!resume && query.get('subjectId') && s.some((subject) => String(subject.id) === query.get('subjectId'))) {
+          if (active) setForm((f) => ({ ...f, subjectId: query.get('subjectId') }));
         }
       } catch (e) { if (active) setLoadError(e.response ? errorText(e) : e.message); }
       finally { if (active) setLoading(false); }

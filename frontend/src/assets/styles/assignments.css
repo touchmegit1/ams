@@ -31,3 +31,16 @@
 @media(max-width:600px){.assignment-main{padding:24px 16px 60px}.assignment-type-options{grid-template-columns:1fr}.assignment-question{padding:12px}.assignment-question-toolbar label{align-items:flex-start;flex-direction:column}.assignment-option{gap:6px;padding:8px}.assignment-questions .assignment-section-title{align-items:flex-start;flex-wrap:wrap}}
 
 .assignment-kind{display:block;font-size:11px;color:#68786e;margin-top:5px}
+.teacher-submission-list { display:grid; gap:14px; margin-top:16px; }
+.teacher-submission-card { display:grid; gap:14px; padding:17px; border:1px solid #dce6de; border-radius:10px; background:#fbfdfb; }
+.teacher-submission-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.teacher-submission-heading > div { display:grid; gap:4px; }
+.teacher-submission-heading strong { color:#20372a; }
+.teacher-submission-heading span { color:#76857a; font-size:11px; }
+.teacher-submission-text { overflow:auto; max-height:260px; margin:0; padding:12px; border-radius:7px; background:#f1f5f1; color:#33473a; font:inherit; font-size:13px; line-height:1.65; white-space:pre-wrap; }
+.teacher-submission-file { justify-self:start; padding:0; border:0; background:none; color:#315b49; cursor:pointer; font:inherit; font-size:12px; font-weight:700; }
+.teacher-grade-form { display:grid; grid-template-columns:160px 1fr auto; align-items:end; gap:10px; }
+.teacher-grade-form label { display:grid; gap:6px; color:#5f7164; font-size:12px; font-weight:650; }
+.teacher-grade-form input, .teacher-grade-form textarea { width:100%; padding:9px 10px; border:1px solid #d7e2da; border-radius:7px; color:#25372d; font:inherit; }
+.teacher-grade-form button { min-height:38px; }
+@media(max-width:700px) { .teacher-grade-form { grid-template-columns:1fr; } .teacher-grade-form button { justify-self:start; } }

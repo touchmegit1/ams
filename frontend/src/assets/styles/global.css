@@ -693,6 +693,24 @@ a {
 @media (max-width: 540px) { .dashboard-brand-name, .dashboard-logout span { display: none; } .dashboard-hero { padding: 65px 0 60px; } .dashboard-hero h1 { font-size: 38px; } .dashboard-steps { grid-template-columns: 1fr; } .dashboard-step { min-height: 0; margin: 0; padding: 22px 0; border-right: 0; border-bottom: 1px solid #d7e1d9; } .dashboard-step-icon { margin: 12px 0; } .dashboard-step-arrow { top: 25px; right: 4px; } .dashboard-detail-heading { padding: 58px 0 40px; } }
 @media (prefers-reduced-motion: reduce) { .dashboard-container button, .dashboard-step-arrow { transition: none; } }
 
+.sa-submit-form { display:grid; gap:16px; }
+.sa-submit-form section { border-top:1px solid #e2ebe5; margin-top:18px; padding-top:20px; }
+.sa-question legend { margin-bottom:11px; font-weight:700; }
+.sa-question > p { margin:0 0 10px; color:#71887d; font-size:12px; }
+.sa-question label { display:flex; align-items:center; gap:9px; margin:8px 0; font-size:14px; }
+.sa-question input { accent-color:#315b49; }
+.sa-field { display:grid; gap:8px; margin:15px 0; color:#476454; font-size:13px; font-weight:650; }
+.sa-field textarea, .sa-field input[type=file] { width:100%; padding:11px 12px; border:1px solid #d7e2da; border-radius:8px; background:#fff; color:#25372d; font:inherit; }
+.sa-field textarea { resize:vertical; line-height:1.6; }
+.sa-field :disabled { background:#f3f6f3; color:#75847a; }
+.sa-submission-state { display:grid; gap:9px; padding:15px; border-radius:9px; background:#f0f5f1; color:#3a5d47; font-size:13px; }
+.sa-submission-state > span { color:#6e8074; font-size:12px; }
+.sa-submission-state button { justify-self:start; border:0; background:none; color:#28684a; cursor:pointer; font:inherit; text-decoration:underline; }
+.sa-submission-state p { margin:0; white-space:pre-wrap; line-height:1.6; }
+.sa-submit-button { justify-self:start; min-height:42px; padding:0 17px; border:0; border-radius:7px; background:#214332; color:#fff; cursor:pointer; font:inherit; font-size:13px; font-weight:700; }
+.sa-submit-button:disabled { opacity:.65; cursor:wait; }
+.sa-error { padding:10px 12px; border-radius:8px; background:#fff4f1; color:#963e35; font-size:13px; }
+
 /* Account menu and profile */
 .dashboard-account { position: relative; }
 .dashboard-account-trigger { display: flex; align-items: center; gap: 9px; padding: 5px 7px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #f7faf7; font: inherit; cursor: pointer; }

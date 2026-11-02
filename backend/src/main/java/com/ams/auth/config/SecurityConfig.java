@@ -59,6 +59,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/webhooks/sepay").permitAll()
                 .requestMatchers("/api/enrollments/**", "/api/enrollments").hasRole("STUDENT")
                 .requestMatchers("/api/student/assignments/**", "/api/student/assignments").hasRole("STUDENT")
+                .requestMatchers("/api/teacher/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").denyAll()
                 // Tất cả các request khác cần authenticate
                 .requestMatchers("/api/assignments/**", "/api/assignment-templates/**", "/api/subjects").hasAnyRole("TEACHER", "ADMIN")

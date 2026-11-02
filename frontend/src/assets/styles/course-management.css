@@ -207,6 +207,28 @@
 .course-workspace .cm-button:not(.cm-button-primary):hover:not(:disabled), .course-workspace .cm-inspector-action:hover { border-color: #9db9a6; color: #254737; background: #f4f8f5; }
 .course-workspace .cm-page-number.active { border-color: #315b49; color: #fff; background: #315b49; }
 .course-workspace .cm-module-header { background: #f7faf8; }
+.course-class-tabs { display:flex; gap:6px; overflow-x:auto; margin:18px 0; padding:5px; border:1px solid #dce6de; border-radius:10px; background:#eef3ef; }
+.course-class-tabs button { min-height:38px; flex:0 0 auto; padding:0 15px; border:0; border-radius:7px; background:transparent; color:#65766a; cursor:pointer; font:inherit; font-size:13px; font-weight:650; }
+.course-class-tabs button.is-active { background:#214332; color:#fff; }
+.course-workspace-alert { margin:12px 0; padding:12px 15px; border:1px solid #ecd5d1; border-radius:8px; background:#fff8f6; color:#873d34; font-size:13px; }
+.course-overview-panel, .course-workspace-panel { overflow:hidden; margin:16px 0 28px; border:1px solid #dce6de; border-radius:13px; background:#fff; }
+.course-overview-panel { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:24px; }
+.course-overview-panel h2 { margin:7px 0; color:#1d2b25; font-size:23px; }
+.course-overview-panel > div:first-child > p:last-child { max-width:620px; color:#65766a; font-size:13px; line-height:1.6; }
+.course-overview-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.course-workspace-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 20px; border-bottom:1px solid #e8eee9; }
+.course-workspace-panel-heading h2 { color:#1d2b25; font-size:18px; }
+.course-workspace-panel-heading p { margin-top:5px; color:#78877d; font-size:12px; }
+.course-workspace-panel-heading > span { color:#607168; font-size:12px; }
+.course-workspace-table-wrap { overflow-x:auto; }
+.course-workspace-table-wrap .cm-table { width:100%; min-width:620px; }
+.course-workspace-table-wrap td a { color:#315b49; font-weight:700; }
+.course-workspace-empty { padding:30px 20px; color:#78877d; }
+.course-payment-totals { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:18px 20px; }
+.course-payment-totals > div { display:grid; gap:7px; padding:15px; border-radius:9px; background:#f4f7f4; }
+.course-payment-totals span, .course-payment-totals small { color:#718078; font-size:12px; }
+.course-payment-totals strong { color:#214332; font-size:22px; }
+@media (max-width:700px) { .course-overview-panel { align-items:flex-start; flex-direction:column; padding:18px; } .course-overview-actions { display:grid; width:100%; } .course-payment-totals { grid-template-columns:1fr; } }
 .course-workspace .cm-modal-backdrop { background: #14271dc2; }
 .course-workspace .cm-icon-button:hover:not(:disabled) { border-color: #9db9a6; color: #254737; background: #f4f8f5; }
 .course-workspace .cm-button:focus-visible, .course-workspace .cm-icon-button:focus-visible, .course-workspace .cm-inspector-action:focus-visible, .course-workspace .cm-add-lesson:focus-visible { outline: 3px solid #9db9a6; outline-offset: 2px; }

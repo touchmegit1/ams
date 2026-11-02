@@ -5,6 +5,7 @@ import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight } from
 import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
 import StudentCourses from './StudentCourses.jsx';
 import StudentAssignments from './StudentAssignments.jsx';
+import TeacherCoursesHome from './TeacherCoursesHome.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const studentSections = [
@@ -43,7 +44,7 @@ function DashboardPage() {
       <WorkspaceHeader sections={sections} activeId={active.id} onSelect={openSection} />
 
       <main className="dashboard-content">
-        {active.id === 'home' ? (
+        {active.id === 'home' && isTeacher ? <TeacherCoursesHome /> : active.id === 'students' && isTeacher ? <TeacherCoursesHome studentFocus /> : active.id === 'home' ? (
           <div className="dashboard-home">
             <section className="dashboard-hero">
               <p className="dashboard-eyebrow">KHÔNG GIAN {isTeacher ? 'GIẢNG DẠY' : 'HỌC TẬP'} CỦA BẠN</p>
