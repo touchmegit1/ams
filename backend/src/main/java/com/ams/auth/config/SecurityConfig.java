@@ -68,7 +68,8 @@ public class SecurityConfig {
             .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, ex) -> {
                 response.setStatus(401);
                 response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"message\":\"Phiên đăng nhập không hợp lệ hoặc đã hết hạn.\"}");
+                String detail = request.getAttribute("ams.auth.failure") instanceof String value ? value : "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.";
+                response.getWriter().write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(java.util.Map.of("message", detail)));
             }).accessDeniedHandler((request, response, ex) -> {
                 response.setStatus(403);
                 response.setContentType("application/json;charset=UTF-8");

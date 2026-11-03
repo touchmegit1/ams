@@ -34,7 +34,7 @@ function GoogleLoginButton({ onSuccess }) {
         theme: 'outline',
         size: 'large',
         text: 'signin_with',
-        width: '100%',
+        width: Math.min(Math.max(buttonRef.current?.clientWidth || 300, 120), 400),
         logo_alignment: 'center',
       });
 

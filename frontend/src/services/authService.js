@@ -1,4 +1,4 @@
-import api from './api';
+﻿import api from './api';
 
 const authService = {
   /** Đăng ký tài khoản */
@@ -13,6 +13,9 @@ const authService = {
   /** Đăng nhập email/password */
   login: (data) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
+
+  /** Silent token refresh - goi khi token sap het han */
+  refresh: () => api.post('/auth/refresh'),
 
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
 

@@ -13,26 +13,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 
 @Service
 public class EnrollmentService {
-    private static final SecureRandom RANDOM = new SecureRandom();
     private final EnrollmentRepository enrollments;
     private final PaymentRepository payments;
     private final CourseRepository courses;
     private final UserRepository users;
     @Value("${sepay.bank:}") private String bank;
-    @Value("${sepay.account-number:}") private String accountNumber;
-    @Value("${sepay.order-prefix:AMS}") private String prefix;
 
     public EnrollmentService(EnrollmentRepository enrollments, PaymentRepository payments,
             CourseRepository courses, UserRepository users) {
@@ -60,30 +52,10 @@ public class EnrollmentService {
         }
         Payment latest = payments.findTopByEnrollment_IdOrderByCreatedAtDescIdDesc(enrollment.getId()).orElse(null);
         Instant now = Instant.now();
-        if (latest != null && latest.getStatus() == PaymentStatus.PENDING && now.isBefore(latest.getExpiresAt())) {
-            return response(enrollment);
-        }
         if (latest != null && latest.getStatus() == PaymentStatus.PENDING) latest.setStatus(PaymentStatus.EXPIRED);
-        if (course.getPrice().compareTo(BigDecimal.ZERO) == 0) {
-            enrollment.setStatus(EnrollmentStatus.ACTIVE);
-            enrollment.setActivatedAt(now);
-            return response(enrollment);
-        }
-        if (course.getPrice().stripTrailingZeros().scale() > 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Course price must be a whole VND amount");
-        }
-        if (bank.isBlank() || accountNumber.isBlank() || !prefix.matches("[A-Za-z]{2,5}")) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "SePay bank configuration is incomplete");
-        }
-        Payment payment = new Payment();
-        payment.setEnrollment(enrollment);
-        payment.setAmount(course.getPrice());
-        payment.setAccountNumber(accountNumber);
-        payment.setOrderCode(prefix.toUpperCase(Locale.ROOT) + HexFormat.of().formatHex(randomBytes(5)).toUpperCase(Locale.ROOT));
-        payment.setExpiresAt(now.plus(Duration.ofHours(5)));
-        enrollment.setStatus(EnrollmentStatus.PENDING);
-        payments.save(payment);
-        return response(enrollment, payment);
+        enrollment.setStatus(EnrollmentStatus.ACTIVE);
+        enrollment.setActivatedAt(now);
+        return response(enrollment);
     }
 
     @Transactional(readOnly = true)
@@ -131,5 +103,4 @@ public class EnrollmentService {
     }
 
     private String encode(String value) { return URLEncoder.encode(value, StandardCharsets.UTF_8); }
-    private byte[] randomBytes(int size) { byte[] bytes = new byte[size]; RANDOM.nextBytes(bytes); return bytes; }
 }

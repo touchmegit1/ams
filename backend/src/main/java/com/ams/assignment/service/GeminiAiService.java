@@ -21,7 +21,7 @@ public class GeminiAiService {
     private final HttpClient client;
     @org.springframework.beans.factory.annotation.Autowired
     public GeminiAiService(@Value("${gemini.api-key:}") String key,@Value("${gemini.model:gemini-flash-latest}") String model,AssignmentService assignments,ObjectMapper json,Validator validator) {
-        this(key,model,assignments,json,validator,HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
+        this(key,model,assignments,json,validator,null);
     }
     GeminiAiService(String key,String model,AssignmentService assignments,ObjectMapper json,Validator validator,HttpClient client) {
         this.key=key; this.model=model; this.assignments=assignments; this.json=json; this.validator=validator;
@@ -36,7 +36,7 @@ public class GeminiAiService {
             String body=json.writeValueAsString(Map.of("contents",List.of(Map.of("parts",List.of(Map.of("text",prompt)))),"generationConfig",Map.of("responseMimeType","application/json")));
             var http=HttpRequest.newBuilder(URI.create("https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent"))
                 .timeout(Duration.ofSeconds(30)).header("Content-Type","application/json").header("x-goog-api-key",key).POST(HttpRequest.BodyPublishers.ofString(body)).build();
-            var response=client.send(http,HttpResponse.BodyHandlers.ofString());
+            var response=httpClient().send(http,HttpResponse.BodyHandlers.ofString());
             if(response.statusCode()!=200) throw new AssignmentException(502,"Gemini không thể tạo đề lúc này. Vui lòng thử lại.");
             var parts=json.readTree(response.body()).path("candidates").path(0).path("content").path("parts");
             StringBuilder text=new StringBuilder(); for(var part:parts) if(!part.path("thought").asBoolean(false)) text.append(part.path("text").asText(""));
@@ -49,4 +49,6 @@ public class GeminiAiService {
         catch(AssignmentException e) { throw e; }
         catch(Exception e) { throw new AssignmentException(502,"Không thể đọc hoặc kết nối Gemini. Chưa lưu bài tập."); }
     }
+
+    private HttpClient httpClient() { return client != null ? client : HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(); }
 }

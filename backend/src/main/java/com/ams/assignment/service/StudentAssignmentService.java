@@ -20,6 +20,7 @@ public class StudentAssignmentService {
     private final AssignmentRepository assignments;
     private final EnrollmentRepository enrollments;
     private final AssignmentService assignmentService;
+    private final com.ams.assignment.repository.SubmissionRepository submissions;
 
     private int studentId(Authentication auth) { return Integer.parseInt(auth.getName()); }
 
@@ -33,7 +34,13 @@ public class StudentAssignmentService {
                 root.get("subjectId").in(courseIds),
                 root.get("status").in(Status.PUBLISHED, Status.CLOSED)),
                 org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "dueDate"))
-            .stream().map(this::safeView).toList();
+            .stream().map(assignment -> {
+                Map<String, Object> view = safeView(assignment);
+                submissions.findTopByAssignment_IdAndStudent_UserIdOrderBySubmittedAtDescSubmissionIdDesc(assignment.getId(), studentId(auth)).ifPresent(s -> {
+                    view.put("submissionStatus", s.getStatus()); view.put("submittedAt", s.getSubmittedAt());
+                });
+                return view;
+            }).toList();
     }
 
     public Map<String, Object> detail(Integer id, Authentication auth) {

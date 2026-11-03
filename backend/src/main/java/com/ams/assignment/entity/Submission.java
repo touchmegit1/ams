@@ -14,6 +14,7 @@ import java.time.Instant;
 @Setter
 public class Submission {
     public enum Status { SUBMITTED, AI_EVALUATED, TEACHER_REVIEWED }
+    public enum AiEvaluationStatus { NOT_REQUIRED, PENDING, COMPLETED, FAILED, UNSUPPORTED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,8 +41,21 @@ public class Submission {
     @Column(name = "ai_score", precision = 5, scale = 2)
     private BigDecimal aiScore;
 
+    @Column(name = "auto_score", precision = 5, scale = 2)
+    private BigDecimal autoScore;
+
     @Column(name = "ai_feedback", columnDefinition = "TEXT")
     private String aiFeedback;
+
+    @Column(name = "auto_feedback", columnDefinition = "TEXT")
+    private String autoFeedback;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_evaluation_status", length = 20)
+    private AiEvaluationStatus aiEvaluationStatus = AiEvaluationStatus.NOT_REQUIRED;
+
+    @Column(name = "ai_evaluated_at")
+    private Instant aiEvaluatedAt;
 
     @Column(name = "teacher_score", precision = 5, scale = 2)
     private BigDecimal teacherScore;
@@ -58,6 +72,10 @@ public class Submission {
 
     @Column(name = "reviewed_at")
     private Instant reviewedAt;
+
+    @Version
+    @Column(name = "submission_version", nullable = false)
+    private Long version;
 
     @PrePersist
     void setSubmittedTimestamp() { if (submittedAt == null) submittedAt = Instant.now(); }

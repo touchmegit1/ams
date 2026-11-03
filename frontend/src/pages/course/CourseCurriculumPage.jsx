@@ -1,12 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { FiArrowLeft, FiArrowRight, FiBookOpen, FiClipboard, FiDownload, FiFileText, FiSearch, FiUsers, FiVideo } from 'react-icons/fi';
 import api from '../../services/api.js';
 import CourseForm from '../../components/course/CourseForm.jsx';
 import { courseStatusLabel, formatCoursePrice } from './courseUi.js';
 import '../../assets/styles/course-management.css';
 
 const errorMessage = (error) => error.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';
+const paymentStatusLabel = { PAID: 'Đã thanh toán', PENDING: 'Đang chờ', FREE: 'Miễn phí', EXPIRED: 'Hết hạn', NOT_COLLECTED: 'Chưa thu (chưa triển khai)' };
+const paymentDate = (value) => value ? new Date(value).toLocaleString('vi-VN') : '—';
+
+function exportPayments(rows, courseCode) {
+  const quote = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+  const contents = [
+    ['Sinh viên', 'Trạng thái', 'Số tiền', 'Ngày thanh toán'],
+    ...rows.map((row) => [row.studentName, paymentStatusLabel[row.status] || row.status, row.status === 'PAID' ? row.amount : row.status === 'FREE' ? 'Miễn phí' : row.status === 'NOT_COLLECTED' ? 'Chưa thu' : '', paymentDate(row.paidAt)]),
+  ].map((row) => row.map(quote).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([`\ufeff${contents}`], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `thanh-toan-${courseCode || 'khoa-hoc'}.csv`;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 function CurriculumModal({ title, initial, kind, onClose, onSubmit, saving, submitError }) {
   const isLesson = kind === 'lesson';
@@ -52,6 +69,8 @@ function CourseCurriculumPage() {
   const [loadError, setLoadError] = useState('');
   const [courseFormOpen, setCourseFormOpen] = useState(false);
   const [curriculumForm, setCurriculumForm] = useState(null);
+  const [viewingLesson, setViewingLesson] = useState(null);
+  const [collapsedModules, setCollapsedModules] = useState(() => new Set());
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [workspaceStats, setWorkspaceStats] = useState(null);
@@ -59,6 +78,11 @@ function CourseCurriculumPage() {
   const [paymentSummary, setPaymentSummary] = useState(null);
   const [courseAssignments, setCourseAssignments] = useState([]);
   const [workspaceError, setWorkspaceError] = useState('');
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
+  const [paymentPage, setPaymentPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,13 +110,15 @@ function CourseCurriculumPage() {
     if (activeTab === 'payments') requests.push(api.get(`/teacher/courses/${courseId}/payments`));
     if (activeTab === 'assignments') requests.push(api.get('/assignments', { params: { subjectId: courseId, page: 0, size: 100 } }));
     setWorkspaceError('');
+    setWorkspaceLoading(true);
     Promise.all(requests).then(([all, extra]) => {
       if (!active) return;
       setWorkspaceStats((Array.isArray(all.data) ? all.data : []).find((item) => String(item.courseId) === String(courseId)) || null);
       if (activeTab === 'students') setStudents(Array.isArray(extra.data) ? extra.data : []);
       if (activeTab === 'payments') setPaymentSummary(extra.data);
       if (activeTab === 'assignments') setCourseAssignments(extra.data?.content || []);
-    }).catch((error) => { if (active) setWorkspaceError(errorMessage(error)); });
+    }).catch((error) => { if (active) setWorkspaceError(errorMessage(error)); })
+      .finally(() => { if (active) setWorkspaceLoading(false); });
     return () => { active = false; };
   }, [activeTab, courseId]);
 
@@ -179,6 +205,18 @@ function CourseCurriculumPage() {
   };
 
   const totalLessons = modules.reduce((total, module) => total + module.lessons.length, 0);
+  const visibleStudents = useMemo(() => {
+    const query = studentSearch.trim().toLocaleLowerCase('vi');
+    return students.filter((student) => !query || [student.fullName, student.email].some((value) => value?.toLocaleLowerCase('vi').includes(query)));
+  }, [students, studentSearch]);
+  const visiblePayments = useMemo(() => (paymentSummary?.payments || []).filter((payment) => {
+    const query = paymentSearch.trim().toLocaleLowerCase('vi');
+    return (paymentStatusFilter === 'ALL' || payment.status === paymentStatusFilter)
+      && (!query || payment.studentName?.toLocaleLowerCase('vi').includes(query));
+  }), [paymentSummary, paymentSearch, paymentStatusFilter]);
+  const paginatedPayments = visiblePayments.slice(paymentPage * 10, paymentPage * 10 + 10);
+  const totalPaymentPages = Math.max(1, Math.ceil(visiblePayments.length / 10));
+  useEffect(() => { setPaymentPage(0); }, [paymentSearch, paymentStatusFilter]);
 
   if (loading) return <main className="cm-page"><div className="cm-loading cm-page-loading">Đang tải khóa học…</div></main>;
   if (loadError || !course) return <main className="cm-page"><div className="cm-container"><div className="cm-alert" role="alert"><span>{loadError || 'Không tìm thấy khóa học'}</span><button onClick={() => navigate('/courses')}>Về danh sách khóa học</button></div></div></main>;
@@ -186,22 +224,23 @@ function CourseCurriculumPage() {
   return (
     <main className="cm-page">
       <div className="cm-container">
-        <div className="cm-breadcrumb"><Link to="/dashboard">Khóa học</Link><span>/</span><strong>{course.courseCode}</strong><span>/</span><strong>Lớp học</strong></div>
+        <div className="cm-breadcrumb"><Link to="/courses">Quản lý khóa học</Link><span>/</span><strong>{course.courseCode}</strong><span>/</span><strong>Lớp học</strong></div>
         <section className="cm-course-hero">
-          <div>
-            <p className="cm-eyebrow">{course.courseCode} · {course.subject}</p>
+          <div className="cm-course-hero-copy">
+            <p className="cm-eyebrow">{course.courseCode} <span>·</span> {course.subject}</p>
             <div className="cm-hero-title"><h1>{course.title}</h1><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{courseStatusLabel[course.status] || course.status}</span></div>
             <p>{course.description || 'Thêm mô tả để sinh viên biết nội dung khóa học.'}</p>
-            {course.targetAudience && <p className="cm-audience">Dành cho {course.targetAudience}</p>}
+            {course.targetAudience && <p className="cm-audience"><FiUsers aria-hidden="true" /> Dành cho {course.targetAudience}</p>}
           </div>
+          <div className="cm-course-hero-actions"><Link className="cm-button cm-button-quiet cm-course-back" to="/courses"><FiArrowLeft aria-hidden="true" /> Quay lại quản lý khóa học</Link><button className="cm-button cm-button-quiet cm-course-edit" onClick={() => { setSubmitError(''); setCourseFormOpen(true); }}>Sửa thông tin</button></div>
         </section>
 
-        <section className="cm-stats-row">
-          <div className="cm-stat"><span>Học phần</span><strong>{modules.length}</strong></div>
-          <div className="cm-stat"><span>Bài học</span><strong>{totalLessons}</strong></div>
-          <div className="cm-stat"><span>Sinh viên</span><strong>{workspaceStats?.studentCount ?? '—'}</strong></div>
-          <div className="cm-stat"><span>Bài cần chấm</span><strong>{workspaceStats?.pendingReviewCount ?? '—'}</strong></div>
-          <div className="cm-stat"><span>Học phí</span><strong>{formatCoursePrice(course.price)}</strong></div>
+        <section className="cm-stats-row" aria-label="Chỉ số khóa học">
+          <div className="cm-stat"><FiBookOpen aria-hidden="true" /><span>Học phần<strong>{modules.length}</strong></span></div>
+          <div className="cm-stat"><FiFileText aria-hidden="true" /><span>Bài học<strong>{totalLessons}</strong></span></div>
+          <div className="cm-stat"><FiUsers aria-hidden="true" /><span>Sinh viên<strong>{workspaceStats?.studentCount ?? '—'}</strong></span></div>
+          <div className="cm-stat cm-stat-attention"><FiClipboard aria-hidden="true" /><span>Bài cần chấm<strong>{workspaceStats?.pendingReviewCount ?? '—'}</strong></span></div>
+          <div className="cm-stat cm-stat-price"><span>Học phí<strong>{formatCoursePrice(course.price)}</strong></span></div>
         </section>
 
         <nav className="course-class-tabs" aria-label="Quản lý lớp học">
@@ -210,14 +249,25 @@ function CourseCurriculumPage() {
         </nav>
         {workspaceError && <div className="course-workspace-alert" role="alert">{workspaceError}</div>}
 
-        {activeTab === 'overview' && <section className="course-overview-panel">
-          <div><p className="cm-eyebrow">LỚP HỌC</p><h2>{course.title}</h2><p>{course.description || 'Quản lý chương trình học, bài tập, sinh viên và học phí của lớp này.'}</p></div>
-          <div className="course-overview-actions">
-            <button className="cm-button cm-button-primary" onClick={() => setSearchParams({ tab: 'content' })}>Quản lý học phần</button>
-            <button className="cm-button" onClick={() => setSearchParams({ tab: 'assignments' })}>Mở bài tập</button>
-            <button className="cm-button" onClick={() => { setSubmitError(''); setCourseFormOpen(true); }}>Sửa thông tin khóa</button>
-          </div>
-        </section>}
+        {activeTab === 'overview' && <div className="course-overview-layout">
+          <section className="course-overview-panel">
+            <div className="course-overview-intro"><p className="cm-eyebrow">TỔNG QUAN KHÓA HỌC</p><h2>{course.title}</h2><p>{course.description || 'Quản lý chương trình học, bài tập, sinh viên và học phí trong một nơi.'}</p></div>
+            <div className="course-overview-facts"><div><span>Mã khóa học</span><strong>{course.courseCode}</strong></div><div><span>Môn học</span><strong>{course.subject || '—'}</strong></div><div><span>Đối tượng</span><strong>{course.targetAudience || 'Chưa cập nhật'}</strong></div><div><span>Trạng thái</span><strong>{courseStatusLabel[course.status] || course.status}</strong></div></div>
+            <div className="course-overview-actions">
+              <button className="cm-button cm-button-primary" onClick={() => setSearchParams({ tab: 'content' })}>Mở chương trình học</button>
+              <button className="cm-button" onClick={() => setSearchParams({ tab: 'assignments' })}>Xem bài tập</button>
+              <button className="cm-button" onClick={() => setSearchParams({ tab: 'students' })}>Xem sinh viên</button>
+            </div>
+          </section>
+          <aside className="course-overview-priority">
+            <section className={workspaceStats?.pendingReviewCount > 0 ? 'is-pending' : ''}>
+              <span className="course-overview-priority-icon"><FiClipboard aria-hidden="true" /></span>
+              <div><p>Việc cần chú ý</p><strong>{workspaceStats?.pendingReviewCount ?? '—'} bài chờ chấm</strong><small>{workspaceStats?.pendingReviewCount > 0 ? 'Xem bài nộp và gửi nhận xét cho sinh viên.' : 'Bài nộp mới sẽ xuất hiện tại đây.'}</small></div>
+              {workspaceStats?.pendingReviewCount > 0 && <button aria-label="Mở bài tập cần chấm" onClick={() => setSearchParams({ tab: 'assignments' })}>→</button>}
+            </section>
+            <section><span className="course-overview-priority-icon"><FiUsers aria-hidden="true" /></span><div><p>Lớp học</p><strong>{workspaceStats?.studentCount ?? '—'} sinh viên</strong><small>Đang ghi danh khóa học</small></div><button aria-label="Mở danh sách sinh viên" onClick={() => setSearchParams({ tab: 'students' })}>→</button></section>
+          </aside>
+        </div>}
 
         {activeTab === 'content' && <div className="cm-curriculum-layout">
         <section className="cm-panel cm-curriculum-panel">
@@ -229,8 +279,11 @@ function CourseCurriculumPage() {
               {modules.map((module, moduleIndex) => (
                 <article className="cm-module-card" key={module.moduleId}>
                   <header className="cm-module-header">
-                    <div className="cm-module-number">{String(moduleIndex + 1).padStart(2, '0')}</div>
-                    <div className="cm-module-title"><h3>{module.title}</h3><span>{module.lessons.length} bài học</span></div>
+                    <button type="button" className="cm-module-toggle" aria-expanded={!collapsedModules.has(module.moduleId)} aria-controls={`module-lessons-${module.moduleId}`} onClick={() => setCollapsedModules((current) => { const next = new Set(current); if (next.has(module.moduleId)) next.delete(module.moduleId); else next.add(module.moduleId); return next; })}>
+                      <span className="cm-module-number">{String(moduleIndex + 1).padStart(2, '0')}</span>
+                      <span className="cm-module-title"><strong>{module.title}</strong><small>{module.lessons.length} bài học</small></span>
+                      <span className="cm-module-chevron" aria-hidden="true">{collapsedModules.has(module.moduleId) ? '⌄' : '⌃'}</span>
+                    </button>
                     <div className="cm-row-actions">
                       <button className="cm-icon-button" aria-label="Đưa học phần lên" disabled={moduleIndex === 0} onClick={() => moveModule(moduleIndex, -1)}>↑</button>
                       <button className="cm-icon-button" aria-label="Đưa học phần xuống" disabled={moduleIndex === modules.length - 1} onClick={() => moveModule(moduleIndex, 1)}>↓</button>
@@ -238,11 +291,13 @@ function CourseCurriculumPage() {
                       <button className="cm-button cm-button-small cm-button-danger" onClick={() => removeModule(module)}>Xóa</button>
                     </div>
                   </header>
-                  <div className="cm-lesson-list">
+                  <div className="cm-lesson-list" id={`module-lessons-${module.moduleId}`} hidden={collapsedModules.has(module.moduleId)}>
                     {module.lessons.map((lesson, lessonIndex) => (
                       <div className="cm-lesson-row" key={lesson.lessonId}>
                         <div className="cm-lesson-number">{moduleIndex + 1}.{lessonIndex + 1}</div>
-                        <div className="cm-lesson-main"><strong>{lesson.title}</strong>{lesson.content && <p>{lesson.content}</p>}{lesson.videoUrl && <a href={lesson.videoUrl} target="_blank" rel="noreferrer">Mở video bài học ↗</a>}</div>
+                        <button type="button" className="cm-lesson-view" onClick={() => setViewingLesson({ module, lesson })} aria-label={`Xem bài học ${lesson.title}`}>
+                          <span className="cm-lesson-main"><strong>{lesson.title}</strong>{lesson.content && <span className="cm-lesson-preview-text">{lesson.content}</span>}<span className="cm-lesson-meta">{lesson.videoUrl && <span><FiVideo aria-hidden="true" /> Có video</span>}{lesson.content && <span><FiFileText aria-hidden="true" /> Có nội dung</span>}<span className="cm-lesson-open-label">Bấm để xem</span></span></span>
+                        </button>
                         <div className="cm-row-actions">
                           <button className="cm-icon-button" aria-label="Đưa bài học lên" disabled={lessonIndex === 0} onClick={() => moveLesson(module, lessonIndex, -1)}>↑</button>
                           <button className="cm-icon-button" aria-label="Đưa bài học xuống" disabled={lessonIndex === module.lessons.length - 1} onClick={() => moveLesson(module, lessonIndex, 1)}>↓</button>
@@ -265,15 +320,36 @@ function CourseCurriculumPage() {
         </div>}
 
         {activeTab === 'assignments' && <section className="course-workspace-panel">
-          <div className="course-workspace-panel-heading"><div><h2>Bài tập của lớp</h2><p>Tạo bài tập cho sinh viên đang học khóa này.</p></div><Link className="cm-button cm-button-primary" to={`/teacher/assignments/new?subjectId=${courseId}`}>＋ Tạo bài tập</Link></div>
-          {!courseAssignments.length ? <div className="cm-empty-state"><h3>Chưa có bài tập</h3><p>Tạo bài tập đầu tiên cho lớp.</p></div> : <div className="course-workspace-table-wrap"><table className="cm-table"><thead><tr><th>Bài tập</th><th>Hạn nộp</th><th>Trạng thái</th><th></th></tr></thead><tbody>{courseAssignments.map((item) => <tr key={item.id}><td><strong>{item.title}</strong></td><td>{item.dueDate ? new Date(item.dueDate).toLocaleString('vi-VN') : '—'}</td><td>{({ DRAFT: 'Bản nháp', PUBLISHED: 'Đang mở', CLOSED: 'Đã đóng', ARCHIVED: 'Đã lưu trữ' })[item.status] || item.status}</td><td><Link to={`/teacher/assignments/${item.id}`}>Xem và chấm</Link></td></tr>)}</tbody></table></div>}
+          <div className="course-workspace-panel-heading"><div><p className="cm-eyebrow">ĐÁNH GIÁ</p><h2>Bài tập của lớp</h2><p>Tạo đề bài và theo dõi bài nộp của sinh viên.</p></div><Link className="cm-button cm-button-primary" to={`/teacher/assignments/new?subjectId=${courseId}`}>＋ Tạo bài tập</Link></div>
+          {workspaceLoading ? <p className="course-workspace-loading" role="status">Đang tải bài tập…</p> : !courseAssignments.length ? <div className="cm-empty-state"><span className="cm-empty-icon"><FiClipboard aria-hidden="true" /></span><h3>Chưa có bài tập</h3><p>Tạo bài tập đầu tiên cho lớp này.</p><Link className="cm-button cm-button-primary" to={`/teacher/assignments/new?subjectId=${courseId}`}>Tạo bài tập</Link></div> : <div className="course-workspace-table-wrap"><table className="cm-table cm-assignment-table"><thead><tr><th>Bài tập</th><th>Hạn nộp</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{courseAssignments.map((item) => <tr key={item.id}><td><div className="cm-assignment-name"><span><FiClipboard aria-hidden="true" /></span><strong>{item.title}</strong></div><small>{item.assignmentType === 'QUIZ' ? 'Trắc nghiệm' : 'Tự luận / tài liệu'} · {item.maxScore ?? 10} điểm</small></td><td>{item.dueDate ? paymentDate(item.dueDate) : '—'}</td><td><span className={`cm-work-status status-${item.status?.toLowerCase()}`}>{({ DRAFT: 'Bản nháp', PUBLISHED: 'Đang nhận bài', CLOSED: 'Đã đóng', ARCHIVED: 'Đã lưu trữ' })[item.status] || item.status}</span></td><td><Link className="cm-table-action" to={`/teacher/assignments/${item.id}?subjectId=${courseId}`}>{item.status === 'DRAFT' ? 'Sửa bài tập' : 'Xem và chấm'} <FiArrowRight aria-hidden="true" /></Link></td></tr>)}</tbody></table></div>}
         </section>}
 
-        {activeTab === 'students' && <section className="course-workspace-panel"><div className="course-workspace-panel-heading"><div><h2>Sinh viên trong lớp</h2><p>Trạng thái ghi danh và quyền học theo thanh toán.</p></div><span>{students.length} sinh viên</span></div>{!students.length ? <p className="course-workspace-empty">Chưa có sinh viên ghi danh.</p> : <div className="course-workspace-table-wrap"><table className="cm-table"><thead><tr><th>Sinh viên</th><th>Email</th><th>Ghi danh</th><th>Thanh toán</th><th>Đã trả</th></tr></thead><tbody>{students.map((item) => <tr key={item.studentId}><td><strong>{item.fullName}</strong></td><td>{item.email}</td><td>{item.enrollmentStatus === 'ACTIVE' ? 'Đang học' : item.enrollmentStatus === 'PENDING' ? 'Chờ kích hoạt' : 'Hết hạn'}</td><td>{item.paymentStatus === 'PAID' ? 'Đã thanh toán' : item.paymentStatus === 'FREE' ? 'Miễn phí' : item.paymentStatus === 'PENDING' ? 'Chờ thanh toán' : 'Hết hạn'}</td><td>{formatCoursePrice(item.paidAmount)}</td></tr>)}</tbody></table></div>}</section>}
+        {activeTab === 'students' && <section className="course-workspace-panel">
+          <div className="course-workspace-panel-heading"><div><p className="cm-eyebrow">DANH SÁCH LỚP</p><h2>Sinh viên trong lớp</h2><p>Theo dõi ghi danh và trạng thái thanh toán.</p></div><strong className="cm-panel-count">{students.length} sinh viên</strong></div>
+          <label className="cm-workspace-search"><FiSearch aria-hidden="true" /><span className="sr-only">Tìm sinh viên</span><input value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email sinh viên" /></label>
+          {workspaceLoading ? <p className="course-workspace-loading" role="status">Đang tải danh sách sinh viên…</p> : !students.length ? <div className="cm-empty-state"><span className="cm-empty-icon"><FiUsers aria-hidden="true" /></span><h3>Chưa có sinh viên</h3><p>Sinh viên ghi danh khóa học sẽ xuất hiện tại đây.</p></div> : !visibleStudents.length ? <div className="course-workspace-empty">Không tìm thấy sinh viên phù hợp.</div> : <div className="course-workspace-table-wrap"><table className="cm-table cm-student-table"><thead><tr><th>Sinh viên</th><th>Email</th><th>Ghi danh</th><th>Thanh toán</th><th>Đã trả</th></tr></thead><tbody>{visibleStudents.map((item) => <tr key={item.studentId}><td><strong className="cm-student-name">{item.fullName}</strong></td><td>{item.email}</td><td><span className={`cm-work-status status-${item.enrollmentStatus?.toLowerCase()}`}>{item.enrollmentStatus === 'ACTIVE' ? 'Đang học' : item.enrollmentStatus === 'PENDING' ? 'Chờ kích hoạt' : 'Hết hạn'}</span></td><td><span className={`cm-work-status status-${item.paymentStatus?.toLowerCase()}`}>{paymentStatusLabel[item.paymentStatus] || item.paymentStatus}</span></td><td>{item.paymentStatus === 'PAID' ? formatCoursePrice(item.paidAmount) : item.paymentStatus === 'FREE' ? 'Miễn phí' : '—'}</td></tr>)}</tbody></table></div>}
+        </section>}
 
-        {activeTab === 'payments' && paymentSummary && <section className="course-workspace-panel"><div className="course-workspace-panel-heading"><div><h2>Thanh toán khóa học</h2><p>Tổng hợp từ các khoản SePay đã xác nhận.</p></div></div><div className="course-payment-totals"><div><span>Đã thu</span><strong>{formatCoursePrice(paymentSummary.paidAmount)}</strong><small>{paymentSummary.paidCount} lượt thanh toán thành công</small></div><div><span>Đang chờ</span><strong>{formatCoursePrice(paymentSummary.pendingAmount)}</strong><small>{paymentSummary.pendingCount} lượt chờ xác nhận</small></div></div><div className="course-workspace-table-wrap"><table className="cm-table"><thead><tr><th>Sinh viên</th><th>Trạng thái</th><th>Số tiền đã trả</th><th>Ngày thanh toán</th></tr></thead><tbody>{paymentSummary.payments?.map((item) => <tr key={item.studentId}><td><strong>{item.studentName}</strong></td><td>{item.status === 'PAID' ? 'Đã thanh toán' : item.status === 'FREE' ? 'Miễn phí' : item.status === 'PENDING' ? 'Chờ thanh toán' : 'Hết hạn'}</td><td>{formatCoursePrice(item.amount)}</td><td>{item.paidAt ? new Date(item.paidAt).toLocaleString('vi-VN') : '—'}</td></tr>)}</tbody></table></div></section>}
+        {activeTab === 'payments' && !paymentSummary && <section className="course-workspace-panel cm-payment-panel"><p className="course-workspace-loading" role="status">{workspaceLoading ? 'Đang tải thanh toán…' : 'Chưa có dữ liệu thanh toán.'}</p></section>}
+        {activeTab === 'payments' && paymentSummary && <section className="course-workspace-panel cm-payment-panel">
+          <div className="course-workspace-panel-heading"><div><p className="cm-eyebrow">ĐỐI SOÁT KHÓA HỌC</p><h2>Thanh toán khóa học</h2><p>Tổng hợp thanh toán theo danh sách sinh viên ghi danh.</p></div><div className="cm-payment-tools"><label className="cm-workspace-search"><FiSearch aria-hidden="true" /><span className="sr-only">Tìm thanh toán</span><input value={paymentSearch} onChange={(event) => setPaymentSearch(event.target.value)} placeholder="Tìm sinh viên" /></label><button className="cm-button" onClick={() => exportPayments(visiblePayments, course.courseCode)} disabled={!visiblePayments.length}><FiDownload aria-hidden="true" /> Tải báo cáo CSV</button></div></div>
+          <div className="course-payment-totals">
+            <div className="is-paid"><span>Đã thu</span><strong>{formatCoursePrice(paymentSummary.paidAmount)}</strong><small>{paymentSummary.paidCount} thanh toán thành công</small><div className="cm-payment-progress"><span style={{ width: `${paymentSummary.payments?.length ? Math.min(100, Math.round(paymentSummary.paidCount * 100 / paymentSummary.payments.length)) : 0}%` }} /></div><small>Tỉ lệ đã thanh toán: {paymentSummary.payments?.length ? Math.round(paymentSummary.paidCount * 100 / paymentSummary.payments.length) : 0}%</small></div>
+            <div className="is-waiting"><span>Đang chờ</span><strong>{formatCoursePrice(paymentSummary.pendingAmount)}</strong><small>{paymentSummary.pendingCount} giao dịch đang chờ xác nhận</small></div>
+          </div>
+          <div className="cm-payment-filter-row"><span>{visiblePayments.length} sinh viên</span><label><span className="sr-only">Lọc trạng thái thanh toán</span><select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="PAID">Đã thanh toán</option><option value="NOT_COLLECTED">Chưa thu</option><option value="PENDING">Đang chờ</option><option value="FREE">Miễn phí</option><option value="EXPIRED">Hết hạn</option></select></label></div>
+          {!visiblePayments.length ? <div className="course-workspace-empty">Không có giao dịch phù hợp với bộ lọc.</div> : <div className="course-workspace-table-wrap"><table className="cm-table cm-payment-table"><thead><tr><th>Sinh viên</th><th>Trạng thái</th><th>Số tiền đã trả</th><th>Ngày thanh toán</th></tr></thead><tbody>{paginatedPayments.map((item) => <tr key={item.studentId}><td><strong className="cm-student-name">{item.studentName}</strong></td><td><span className={`cm-work-status status-${item.status?.toLowerCase()}`}>{paymentStatusLabel[item.status] || item.status}</span></td><td>{item.status === 'PAID' ? formatCoursePrice(item.amount) : item.status === 'FREE' ? 'Miễn phí' : item.status === 'NOT_COLLECTED' ? 'Chưa thu' : '—'}</td><td>{paymentDate(item.paidAt)}</td></tr>)}</tbody></table></div>}
+          {visiblePayments.length > 0 && <div className="cm-payment-pagination"><span>Hiển thị {paymentPage * 10 + 1}–{Math.min((paymentPage + 1) * 10, visiblePayments.length)} / {visiblePayments.length}</span><div><button className="cm-button cm-button-small" disabled={paymentPage === 0} onClick={() => setPaymentPage((page) => Math.max(0, page - 1))}>Trước</button><span>{paymentPage + 1} / {totalPaymentPages}</span><button className="cm-button cm-button-small" disabled={paymentPage + 1 >= totalPaymentPages} onClick={() => setPaymentPage((page) => Math.min(totalPaymentPages - 1, page + 1))}>Tiếp</button></div></div>}
+        </section>}
       </div>
 
+      {viewingLesson && <div className="cm-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingLesson(null); }}>
+        <section className="cm-modal cm-lesson-preview" role="dialog" aria-modal="true" aria-labelledby="lesson-preview-title">
+          <header className="cm-modal-header"><div><p className="cm-eyebrow">{viewingLesson.module.title}</p><h2 id="lesson-preview-title">{viewingLesson.lesson.title}</h2></div><button className="cm-icon-button" type="button" onClick={() => setViewingLesson(null)} aria-label="Đóng nội dung bài học">×</button></header>
+          <div className="cm-lesson-preview-content">{viewingLesson.lesson.content ? <p>{viewingLesson.lesson.content}</p> : <p className="cm-lesson-preview-empty">Bài học chưa có nội dung mô tả.</p>}{viewingLesson.lesson.videoUrl && <a href={viewingLesson.lesson.videoUrl} target="_blank" rel="noreferrer"><FiVideo aria-hidden="true" /> Mở video bài học <FiArrowRight aria-hidden="true" /></a>}</div>
+          <footer className="cm-modal-footer"><button className="cm-button cm-button-quiet" type="button" onClick={() => setViewingLesson(null)}>Đóng</button><button className="cm-button cm-button-primary" type="button" onClick={() => { setCurriculumForm({ kind: 'lesson', module: viewingLesson.module, lesson: viewingLesson.lesson }); setViewingLesson(null); }}>Sửa bài học</button></footer>
+        </section>
+      </div>}
       {courseFormOpen && <CourseForm initialCourse={course} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} saving={saving} submitError={submitError} />}
       {curriculumForm && <CurriculumModal kind={curriculumForm.kind} initial={curriculumForm.module && curriculumForm.kind === 'module' ? curriculumForm.module : curriculumForm.lesson} title={`${curriculumForm.module || curriculumForm.lesson ? 'Sửa' : 'Thêm'} ${curriculumForm.kind === 'module' ? 'học phần' : 'bài học'}`} onClose={() => setCurriculumForm(null)} onSubmit={submitCurriculum} saving={saving} submitError={submitError} />}
     </main>

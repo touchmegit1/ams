@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { FiArrowRight, FiBookOpen, FiEdit2, FiLayers, FiTrash2, FiUsers } from 'react-icons/fi';
 import api from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import CourseForm from '../../components/course/CourseForm.jsx';
@@ -30,10 +31,15 @@ function CourseManagementPage() {
     setLoading(true);
     setLoadError('');
     try {
-      const response = await api.get('/courses');
+      const [response, workspaceResponse] = await Promise.all([
+        api.get('/courses'),
+        api.get('/teacher/courses').catch(() => null),
+      ]);
       const courseList = Array.isArray(response.data) ? response.data : [];
-      setCourses(courseList);
-      const structureEntries = await Promise.all(courseList.map(async (course) => {
+      const workspaceById = new Map((Array.isArray(workspaceResponse?.data) ? workspaceResponse.data : []).map((course) => [String(course.courseId), course]));
+      const coursesWithMetrics = courseList.map((course) => ({ ...course, ...workspaceById.get(String(course.courseId)) }));
+      setCourses(coursesWithMetrics);
+      const structureEntries = await Promise.all(coursesWithMetrics.map(async (course) => {
         try {
           const { data } = await api.get(`/courses/${course.courseId}/modules`);
           const modules = Array.isArray(data) ? data : [];
@@ -155,21 +161,23 @@ function CourseManagementPage() {
           {loading ? <div className="cm-loading">Đang tải khóa học…</div> : visibleCourses.length === 0 ? (
             <div className="cm-empty-state"><div className="cm-empty-icon">▤</div><h3>{courses.length ? 'Không tìm thấy khóa học' : 'Bắt đầu với khóa học đầu tiên'}</h3><p>{courses.length ? 'Thử từ khóa hoặc bộ lọc khác.' : 'Thêm thông tin khóa học, sau đó tạo học phần và bài học.'}</p>{!courses.length && <button className="cm-button cm-button-primary" onClick={openCreate}>Tạo khóa học</button>}</div>
           ) : (
-            <div className="cm-table-wrap">
-              <table className="cm-table cm-course-table">
-                <thead><tr><th>Mã khóa học</th><th>Tên và mô tả khóa học</th><th>Cấu trúc</th><th>Học phí</th><th>Trạng thái</th><th>Cập nhật gần nhất</th><th><span className="sr-only">Thao tác</span></th></tr></thead>
-                <tbody>{pageCourses.map((course) => (
-                  <tr key={course.courseId}>
-                    <td><strong className="cm-code-value">{course.courseCode}</strong></td>
-                    <td><div className="cm-course-name"><Link className="cm-course-title-link" to={`/courses/${course.courseId}`}>{course.title}</Link><small>{course.description || course.subject || 'Chưa có mô tả'}{course.targetAudience ? ` · ${course.targetAudience}` : ''}</small></div></td>
-                    <td>{structures[course.courseId]?.modules == null ? '—' : <><strong>{structures[course.courseId].modules} học phần</strong><small className="cm-subline">{structures[course.courseId].lessons} bài học</small></>}</td>
-                    <td>{formatCoursePrice(course.price)}</td>
-                    <td><span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{courseStatusLabel[course.status] || course.status}</span></td>
-                    <td>{course.updatedAt ? new Date(course.updatedAt).toLocaleDateString('vi-VN') : course.createdAt ? new Date(course.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
-                    <td><div className="cm-row-actions"><button className="cm-button cm-button-small" onClick={() => navigate(`/courses/${course.courseId}`)}>Chương trình học</button><button className="cm-button cm-button-small cm-button-quiet" onClick={() => openEdit(course)}>Sửa</button><button className="cm-button cm-button-small cm-button-danger" onClick={() => deleteCourse(course)}>Xóa</button></div></td>
-                  </tr>
-                ))}</tbody>
-              </table>
+            <div className="teacher-managed-course-grid">
+              {pageCourses.map((course) => (
+                <article className="teacher-managed-course" key={course.courseId}>
+                  <div className="teacher-managed-course-art">
+                    <span className="cm-code-value">{course.courseCode}</span>
+                    <span className={`cm-status cm-status-${course.status.toLowerCase()}`}>{courseStatusLabel[course.status] || course.status}</span>
+                    <span className="teacher-managed-subject">{course.subject || 'Khóa học'}</span>
+                    <FiBookOpen className="teacher-managed-course-icon" aria-hidden="true" />
+                  </div>
+                  <div className="teacher-managed-course-body">
+                    <h3><Link to={`/courses/${course.courseId}`}>{course.title}</Link></h3>
+                    <p>{course.description || 'Thêm mô tả để giới thiệu khóa học.'}</p>
+                    <div className="teacher-managed-course-meta"><span><FiLayers aria-hidden="true" /><strong>{structures[course.courseId]?.modules ?? '—'}</strong> học phần</span><span><FiUsers aria-hidden="true" /><strong>{course.studentCount ?? '—'}</strong> sinh viên</span><span className="teacher-managed-lesson-count">{structures[course.courseId]?.lessons ?? '—'} bài học</span></div>
+                    <div className="teacher-managed-course-footer"><strong>{formatCoursePrice(course.price)}</strong><div className="teacher-managed-course-actions"><button type="button" className="teacher-managed-icon-action" aria-label={`Sửa khóa học ${course.title}`} title="Sửa khóa học" onClick={() => openEdit(course)}><FiEdit2 /></button><button type="button" className="teacher-managed-icon-action is-danger" aria-label={`Xóa khóa học ${course.title}`} title="Xóa khóa học" onClick={() => deleteCourse(course)}><FiTrash2 /></button><button type="button" className="teacher-managed-enter" onClick={() => navigate(`/courses/${course.courseId}`)}>Vào lớp <FiArrowRight aria-hidden="true" /></button></div></div>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
           {!loading && visibleCourses.length > 0 && <nav className="cm-pagination" aria-label="Các trang khóa học">

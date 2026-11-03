@@ -26,6 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.mock.web.MockPart;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -50,6 +51,7 @@ class TeacherWorkspaceIntegrationTest {
     @Autowired EnrollmentRepository enrollments;
     @Autowired PaymentRepository payments;
     @Autowired JwtTokenProvider jwt;
+    @Autowired PasswordEncoder passwordEncoder;
 
     String teacher;
     String otherTeacher;
@@ -122,6 +124,13 @@ class TeacherWorkspaceIntegrationTest {
             .andExpect(jsonPath("pendingCount").value(1))
             .andExpect(jsonPath("payments[0].orderCode").doesNotExist());
     }
+    @Test void paidActiveEnrollmentWithoutPaymentIsReportedAsNotCollected() throws Exception {
+        payments.deleteAll();
+        mvc.perform(get("/api/teacher/courses/{id}/students", courseId).header("Authorization", teacher))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].paymentStatus").value("NOT_COLLECTED"));
+        mvc.perform(get("/api/teacher/courses/{id}/payments", courseId).header("Authorization", teacher))
+            .andExpect(status().isOk()).andExpect(jsonPath("payments[0].status").value("NOT_COLLECTED"));
+    }
 
     @Test void enrolledStudentCanSubmitAndTeacherCanGradeButOthersCannot() throws Exception {
         Assignment assignment = publishedAssignment();
@@ -152,6 +161,32 @@ class TeacherWorkspaceIntegrationTest {
         mvc.perform(multipart("/api/student/assignments/{id}/submission", assignment.getId())
                 .part(new MockPart("submissionText", "Thay đổi sau khi chấm".getBytes())).header("Authorization", student))
             .andExpect(status().isConflict());
+    }
+
+    @Test void freshlyLoggedInStudentCanSubmitMultipartUsingReturnedBearerToken() throws Exception {
+        Assignment assignment = publishedAssignment();
+        User learner = users.findByEmail("student@workspace.test").orElseThrow();
+        learner.setPasswordHash(passwordEncoder.encode("student-password")); users.save(learner);
+        String login = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("email", learner.getEmail(), "password", "student-password"))))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String accessToken = "Bearer " + json.readTree(login).get("accessToken").asText();
+        MockMultipartFile file = new MockMultipartFile("file", "fresh.pdf", "application/pdf", "%PDF-1.4 content".getBytes());
+        mvc.perform(multipart("/api/student/assignments/{id}/submission", assignment.getId()).file(file)
+                .part(new MockPart("submissionText", "fresh answer".getBytes())).header("Authorization", accessToken))
+            .andExpect(status().isCreated()).andExpect(jsonPath("aiEvaluationStatus").value("PENDING"));
+        mvc.perform(get("/api/student/assignments/{id}/submission", assignment.getId()).header("Authorization", accessToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("submissionText").value("fresh answer"))
+            .andExpect(jsonPath("teacherScore").value(org.hamcrest.Matchers.nullValue())).andExpect(jsonPath("aiScore").doesNotExist());
+        mvc.perform(get("/api/student/assignments").header("Authorization", accessToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].submissionStatus").value("SUBMITTED"));
+    }
+
+    @Test void studentSubmissionReadWithoutBearerReturnsSpecificAuthReason() throws Exception {
+        Assignment assignment = publishedAssignment();
+        mvc.perform(get("/api/student/assignments/{id}/submission", assignment.getId()))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("message").value(org.hamcrest.Matchers.containsString("thiếu Bearer token")));
     }
 
     @Test void rejectsUnenrolledStudentAndUnallowedSubmissionFile() throws Exception {

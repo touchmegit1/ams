@@ -32,3 +32,10 @@ test('rejects an expired session on reload', () => {
   assert.equal(restoreSession(), null);
   assert.equal(getAccessToken(), null);
 });
+
+test('recovers the active bearer token from tab storage if the in-memory module state was reset', async () => {
+  const token = tokenWithExpiry(Math.floor(Date.now() / 1000) + 3600);
+  saveSession(token, { role: 'STUDENT' });
+  const reloadedModule = await import(`../src/services/authSession.js?fresh=${Date.now()}`);
+  assert.equal(reloadedModule.getAccessToken(), token);
+});

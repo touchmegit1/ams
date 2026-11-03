@@ -17,12 +17,14 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
+    public static final long DEFAULT_EXPIRATION_MS = 3600000;
+
     private final SecretKey key;
     private final long expirationMs;
 
     public JwtTokenProvider(
             @Value("${jwt.secret:}") String secret,
-            @Value("${jwt.expiration-ms:900000}") long expirationMs,
+            @Value("${jwt.expiration-ms:" + DEFAULT_EXPIRATION_MS + "}") long expirationMs,
             Environment environment) {
         if (secret.isBlank() && (environment.acceptsProfiles(Profiles.of("prod")) || !environment.acceptsProfiles(Profiles.of("dev")))) {
             throw new IllegalStateException("JWT_SECRET phải được cấu hình ngoài môi trường dev");
@@ -71,6 +73,15 @@ public class JwtTokenProvider {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public String validationMessage(String token) {
+        if (token == null || token.isBlank()) return "Request nộp bài thiếu Bearer token xác thực.";
+        try { parseClaims(token); return "Token không hợp lệ."; }
+        catch (ExpiredJwtException e) { return "Token đã hết hạn. Vui lòng đăng nhập lại."; }
+        catch (UnsupportedJwtException e) { return "Định dạng token không được hỗ trợ."; }
+        catch (io.jsonwebtoken.security.SignatureException e) { return "Chữ ký token không hợp lệ."; }
+        catch (JwtException | IllegalArgumentException e) { return "Token không hợp lệ hoặc sai cấu hình xác thực."; }
     }
 
     private Claims parseClaims(String token) {

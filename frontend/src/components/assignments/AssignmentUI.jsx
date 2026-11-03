@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export const statuses = { DRAFT: 'Bản nháp', PUBLISHED: 'Đang mở', CLOSED: 'Đã đóng', ARCHIVED: 'Lưu trữ' };
+export const statuses = { DRAFT: 'Bản nháp', PUBLISHED: 'Đang mở', CLOSED: 'Đã đóng', ARCHIVED: 'Lưu trữ', SUBMITTED: 'Chờ chấm', AI_EVALUATED: 'AI đã đánh giá', TEACHER_REVIEWED: 'Đã chấm' };
 export const sources = { MANUAL: 'Thủ công', AI: 'AI', TEMPLATE: 'Mẫu bài tập' };
 export const dateText = (date) => date ? new Date(date).toLocaleString('vi-VN') : '—';
 export const errorText = (error) => error.response?.data?.message || (error.code === 'ECONNABORTED' ? 'Quá thời gian chờ. Vui lòng thử lại.' : 'Không thể kết nối máy chủ. Vui lòng thử lại.');

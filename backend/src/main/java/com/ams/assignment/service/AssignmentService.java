@@ -114,7 +114,8 @@ public class AssignmentService {
         }
     }
     public void validateRubric(List<Criterion> rubric) {
-        if(rubric==null || rubric.isEmpty() || rubric.size()>30 || rubric.stream().anyMatch(Objects::isNull)
+        if(rubric!=null && rubric.isEmpty()) return;
+        if(rubric==null || rubric.size()>30 || rubric.stream().anyMatch(Objects::isNull)
             || rubric.stream().anyMatch(r->r.criteria()==null || r.criteria().isBlank() || r.criteria().length()>200
                 || r.description()==null || r.description().isBlank() || r.description().length()>4000
                 || r.weight()==null || r.weight().signum()<=0 || r.weight().compareTo(new BigDecimal("100"))>0)

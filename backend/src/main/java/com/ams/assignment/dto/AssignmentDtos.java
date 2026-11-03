@@ -23,7 +23,7 @@ public final class AssignmentDtos {
                         @NotNull @DecimalMin("0.01") @DecimalMax("999.99") @Digits(integer=3, fraction=2) BigDecimal maxScore,
                         @NotNull @Size(max=10) List<@Pattern(regexp="PDF|DOC|DOCX|ZIP|TXT|PPTX|XLSX|PNG|JPG") String> allowedFileTypes,
                         @NotNull Source source, @Size(max=6000) String aiPrompt,
-                        @NotEmpty @Size(max=30) List<@NotNull @Valid Criterion> rubric,
+                        @NotNull @Size(max=30) List<@NotNull @Valid Criterion> rubric,
                         @Pattern(regexp="DOCUMENT|QUIZ") String assignmentType,
                         @Size(max=100) List<@NotNull @Valid Question> questions) {}
     public record Generate(@NotNull Integer subjectId, @NotBlank @Size(max=4000) String topic,

@@ -161,6 +161,15 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public AuthResponse refresh(Integer userId) {
+        User user = userRepository.findById(userId)
+            .filter(u -> Boolean.TRUE.equals(u.getIsVerified()) && Boolean.TRUE.equals(u.getIsEnabled()))
+            .orElseThrow(() -> new AuthBusinessException("Tai khoan khong con hop le."));
+        return buildAuthResponse(user);
+    }
+
+    @Override
     public AuthResponse.UserInfo getProfile(Integer userId) {
         return toUserInfo(userRepository.findById(userId).orElseThrow(() -> new AuthBusinessException("Không tìm thấy tài khoản")));
     }

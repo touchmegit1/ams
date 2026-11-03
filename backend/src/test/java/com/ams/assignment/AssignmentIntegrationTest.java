@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.*;
@@ -142,6 +143,22 @@ class AssignmentIntegrationTest {
         mvc.perform(get("/api/student/assignments/{id}",id).header("Authorization",student)).andExpect(status().isOk())
             .andExpect(jsonPath("questions[0].correctAnswers").doesNotExist());
         mvc.perform(get("/api/student/assignments").header("Authorization",teacher)).andExpect(status().isForbidden());
+    }
+
+    @Test void studentCanSubmitMultipartAssignmentWithBearerToken() throws Exception {
+        int id = create(body());
+        mvc.perform(post("/api/assignments/{id}/publish", id).header("Authorization", teacher))
+            .andExpect(status().isOk());
+        User learner = users.findByEmail("student@test.local").orElseThrow();
+        Enrollment enrollment = new Enrollment(); enrollment.setStudent(learner);
+        enrollment.setCourse(enrollmentCourses.findById(subjectId).orElseThrow()); enrollment.setStatus(EnrollmentStatus.ACTIVE);
+        enrollments.save(enrollment);
+
+        mvc.perform(multipart("/api/student/assignments/{id}/submission", id)
+                .file(new MockMultipartFile("file", "work.pdf", "application/pdf", "assignment work".getBytes()))
+                .header("Authorization", student))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("status").value("SUBMITTED"));
     }
     @Test void deadlineClosesOnlyExpiredPublishedAssignments() throws Exception {
         int id=create(body()); mvc.perform(post("/api/assignments/{id}/publish",id).header("Authorization",teacher)).andExpect(status().isOk());

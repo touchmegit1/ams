@@ -69,7 +69,7 @@ public class TeacherWorkspaceService {
             List<Payment> attempts = paymentMap.getOrDefault(enrollment.getId(), List.of());
             Payment latestPaid = attempts.stream().filter(p -> p.getStatus() == PaymentStatus.PAID).findFirst().orElse(null);
             Payment latest = attempts.stream().findFirst().orElse(null);
-            String paymentStatus = latestPaid != null ? "PAID" : latest == null ? "FREE" : latest.getStatus().name();
+            String paymentStatus = paymentStatus(course, enrollment, latestPaid, latest);
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("studentId", student.getUserId()); row.put("fullName", student.getFullName()); row.put("email", student.getEmail());
             row.put("enrollmentStatus", enrollment.getStatus()); row.put("paymentStatus", paymentStatus);
@@ -99,11 +99,18 @@ public class TeacherWorkspaceService {
             Payment latestPaid = attempts.stream().filter(p -> p.getStatus() == PaymentStatus.PAID).findFirst().orElse(null);
             Payment latest = attempts.stream().findFirst().orElse(null);
             Map<String, Object> row = new LinkedHashMap<>(); row.put("studentId", enrollment.getStudent().getUserId());
-            row.put("studentName", enrollment.getStudent().getFullName()); row.put("status", latestPaid != null ? "PAID" : latest == null ? "FREE" : latest.getStatus());
+            row.put("studentName", enrollment.getStudent().getFullName()); row.put("status", paymentStatus(course, enrollment, latestPaid, latest));
             row.put("amount", latestPaid == null ? BigDecimal.ZERO : latestPaid.getAmount()); row.put("paidAt", latestPaid == null ? null : latestPaid.getPaidAt());
             return row;
         }).toList());
         return result;
+    }
+
+    private String paymentStatus(Course course, Enrollment enrollment, Payment latestPaid, Payment latest) {
+        if (latestPaid != null) return "PAID";
+        if (course.getPrice().signum() > 0 && enrollment.getStatus() == EnrollmentStatus.ACTIVE) return "NOT_COLLECTED";
+        if (latest != null) return latest.getStatus().name();
+        return "FREE";
     }
 
     public Course requireCourse(Integer id, Authentication auth) {

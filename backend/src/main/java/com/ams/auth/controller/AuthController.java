@@ -27,6 +27,11 @@ public class AuthController {
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(Authentication authentication) {
+        return ResponseEntity.ok(authService.refresh((Integer) authentication.getPrincipal()));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<MessageResponse> logout(Authentication authentication) {
         authService.logout((Integer) authentication.getPrincipal());

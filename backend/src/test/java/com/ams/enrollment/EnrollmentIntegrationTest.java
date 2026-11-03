@@ -5,6 +5,9 @@ import com.ams.auth.repository.UserRepository;
 import com.ams.auth.security.JwtTokenProvider;
 import com.ams.coursemgmt.entity.*;
 import com.ams.coursemgmt.repository.*;
+import com.ams.enrollment.entity.Enrollment;
+import com.ams.enrollment.entity.Payment;
+import com.ams.enrollment.entity.PaymentStatus;
 import com.ams.enrollment.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +28,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -63,6 +67,21 @@ class EnrollmentIntegrationTest {
         return mvc.perform(post("/api/enrollments/courses/{id}", courseId).header("Authorization", student))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
     }
+    String pendingOrder() throws Exception {
+        User learner = users.findByEmail("learner@example.test").orElseThrow();
+        Enrollment enrollment = enrollments.findByStudent_UserIdAndCourse_CourseId(learner.getUserId(), courseId).orElse(null);
+        if (enrollment == null) {
+            enrollment = new Enrollment(); enrollment.setStudent(learner); enrollment.setCourse(courses.findById(courseId).orElseThrow());
+            enrollment = enrollments.saveAndFlush(enrollment);
+        }
+        Payment payment = payments.findTopByEnrollment_IdOrderByCreatedAtDescIdDesc(enrollment.getId()).orElse(null);
+        if (payment == null) {
+            payment = new Payment(); payment.setEnrollment(enrollment); payment.setOrderCode("AMS" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase());
+            payment.setAmount(new BigDecimal("100000")); payment.setAccountNumber("123456789");
+            payment.setExpiresAt(Instant.now().plus(Duration.ofHours(1))); payment = payments.saveAndFlush(payment);
+        }
+        return payment.getOrderCode();
+    }
     void webhook(long id, String code, long amount, String account, boolean valid) throws Exception {
         webhookWithContent(id, code, "", amount, account, valid);
     }
@@ -80,9 +99,8 @@ class EnrollmentIntegrationTest {
                 .andExpect(valid ? status().isOk() : status().isUnauthorized());
     }
     @Test void paidEnrollmentRequiresMatchingWebhookAndIgnoresReplay() throws Exception {
-        String first = enroll();
-        assertThat(enroll()).contains(json.readTree(first).get("orderCode").asText());
-        String code = json.readTree(first).get("orderCode").asText();
+        String code = pendingOrder();
+        assertThat(pendingOrder()).isEqualTo(code);
         webhook(101, code, 100000, "123456789", false);
         assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
         webhook(101, code, 100000, "123456789", true);
@@ -90,8 +108,45 @@ class EnrollmentIntegrationTest {
         assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("ACTIVE");
         assertThat(transactions.count()).isEqualTo(1);
     }
+    @Test void paidCourseEnrollmentActivatesImmediatelyWithoutCreatingPayment() throws Exception {
+        mvc.perform(post("/api/enrollments/courses/{id}", courseId).header("Authorization", student))
+                .andExpect(status().isOk()).andExpect(jsonPath("status").value("ACTIVE"))
+                .andExpect(jsonPath("paymentId").doesNotExist()).andExpect(jsonPath("qrUrl").doesNotExist());
+        assertThat(enrollments.findAll()).hasSize(1);
+        assertThat(payments.findAll()).isEmpty();
+        assertThat(enrollments.findAll().get(0).getActivatedAt()).isNotNull();
+    }
+    @Test void enrollingAgainActivatesLegacyPendingEnrollmentAndExpiresItsQr() throws Exception {
+        User learner = users.findByEmail("learner@example.test").orElseThrow();
+        Enrollment enrollment = new Enrollment(); enrollment.setStudent(learner);
+        enrollment.setCourse(courses.findById(courseId).orElseThrow());
+        enrollment = enrollments.saveAndFlush(enrollment);
+        Payment payment = new Payment(); payment.setEnrollment(enrollment); payment.setOrderCode("OLD-ORDER-1");
+        payment.setAmount(new BigDecimal("100000")); payment.setAccountNumber("123456789");
+        payment.setExpiresAt(Instant.now().plus(Duration.ofHours(1))); payments.saveAndFlush(payment);
+
+        mvc.perform(post("/api/enrollments/courses/{id}", courseId).header("Authorization", student))
+                .andExpect(status().isOk()).andExpect(jsonPath("status").value("ACTIVE"))
+                .andExpect(jsonPath("paymentStatus").value("EXPIRED"));
+        assertThat(enrollments.findById(enrollment.getId()).orElseThrow().getStatus().name()).isEqualTo("ACTIVE");
+        assertThat(payments.findById(payment.getId()).orElseThrow().getStatus().name()).isEqualTo("EXPIRED");
+    }
+    @Test void lateWebhookCannotCollectAfterPendingQrWasCanceledForDirectAccess() throws Exception {
+        User learner = users.findByEmail("learner@example.test").orElseThrow();
+        Enrollment enrollment = new Enrollment(); enrollment.setStudent(learner);
+        enrollment.setCourse(courses.findById(courseId).orElseThrow()); enrollment = enrollments.saveAndFlush(enrollment);
+        Payment payment = new Payment(); payment.setEnrollment(enrollment); payment.setOrderCode("OLD-ORDER-2");
+        payment.setAmount(new BigDecimal("100000")); payment.setAccountNumber("123456789");
+        payment.setExpiresAt(Instant.now().plus(Duration.ofHours(1))); payments.saveAndFlush(payment);
+        mvc.perform(post("/api/enrollments/courses/{id}", courseId).header("Authorization", student)).andExpect(status().isOk());
+
+        webhook(919, "OLD-ORDER-2", 100000, "123456789", true);
+        assertThat(enrollments.findById(enrollment.getId()).orElseThrow().getStatus().name()).isEqualTo("ACTIVE");
+        assertThat(payments.findById(payment.getId()).orElseThrow().getStatus().name()).isEqualTo("EXPIRED");
+        assertThat(reviews.findAll()).anySatisfy(review -> assertThat(review.getReason()).isEqualTo("ORDER_NOT_PENDING"));
+    }
     @Test void wrongAmountGoesToReviewAndFreeCourseActivatesImmediately() throws Exception {
-        String code = json.readTree(enroll()).get("orderCode").asText();
+        String code = pendingOrder();
         webhook(202, code, 90000, "123456789", true);
         assertThat(reviews.count()).isEqualTo(1);
         assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
@@ -101,7 +156,7 @@ class EnrollmentIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("status").value("ACTIVE"));
     }
     @Test void replayOfReviewedWebhookUsesExactCodeInContent() throws Exception {
-        String code = json.readTree(enroll()).get("orderCode").asText();
+        String code = pendingOrder();
         webhookWithContent(707, "", "Unrecognized payment", 100000, "123456789", true);
         assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
         webhookWithContent(707, "", "Chuyen tien " + code + " khoa hoc", 100000, "123456789", true);
@@ -110,31 +165,18 @@ class EnrollmentIntegrationTest {
         assertThat(transactions.count()).isEqualTo(1);
     }
     @Test void codeInContentDoesNotOverrideWrongAccount() throws Exception {
-        String code = json.readTree(enroll()).get("orderCode").asText();
+        String code = pendingOrder();
         webhookWithContent(808, "", code, 100000, "999999999", true);
         assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
         assertThat(reviews.findAll().get(0).getReason()).isEqualTo("WRONG_ACCOUNT");
     }
     @Test void paymentToCurrentReceivingAccountCanMatchOlderQrAccount() throws Exception {
-        String code = json.readTree(enroll()).get("orderCode").asText();
+        String code = pendingOrder();
         var payment = payments.findByOrderCode(code).orElseThrow();
         payment.setAccountNumber("previous-account");
         payments.save(payment);
         webhookWithContent(909, "", "Chuyen khoan " + code, 100000, "123456789", true);
         assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("ACTIVE");
-    }
-    @Test void expiredPaymentGetsNewCodeAndLateTransferIsReviewed() throws Exception {
-        String oldCode = json.readTree(enroll()).get("orderCode").asText();
-        var oldPayment = payments.findByOrderCode(oldCode).orElseThrow();
-        oldPayment.setExpiresAt(Instant.now().minus(Duration.ofMinutes(1)));
-        payments.save(oldPayment);
-        mvc.perform(get("/api/enrollments").header("Authorization", student)).andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("EXPIRED"));
-        String newCode = json.readTree(enroll()).get("orderCode").asText();
-        assertThat(newCode).isNotEqualTo(oldCode);
-        webhook(303, oldCode, 100000, "123456789", true);
-        assertThat(reviews.count()).isEqualTo(1);
-        assertThat(enrollments.findAll().get(0).getStatus().name()).isEqualTo("PENDING");
     }
     @Test void previewHidesLessonContentUntilActive() throws Exception {
         mvc.perform(get("/api/courses/published").header("Authorization", student))
@@ -145,15 +187,16 @@ class EnrollmentIntegrationTest {
         lesson.setContent("Paid content"); lessons.save(lesson);
         mvc.perform(get("/api/courses/published/{id}/modules", courseId).header("Authorization", student))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].lessons[0].content").isEmpty());
-        String code = json.readTree(enroll()).get("orderCode").asText();
-        webhook(404, code, 100000, "123456789", true);
+        mvc.perform(post("/api/enrollments/courses/{id}", courseId).header("Authorization", student))
+                .andExpect(status().isOk()).andExpect(jsonPath("status").value("ACTIVE"));
+        assertThat(payments.findAll()).isEmpty();
         mvc.perform(get("/api/courses/published/{id}/modules", courseId).header("Authorization", student))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].lessons[0].content").value("Paid content"));
     }
     @Test void archivedCourseKeepsPaidAccessAndCannotBeDeleted() throws Exception {
         User teacher = users.findById(courses.findById(courseId).orElseThrow().getTeacher().getUserId()).orElseThrow();
         String teacherToken = "Bearer " + jwt.generateToken(teacher.getUserId(), teacher.getEmail(), teacher.getRole().name(), teacher.getAuthVersion());
-        String code = json.readTree(enroll()).get("orderCode").asText();
+        String code = pendingOrder();
         webhook(505, code, 100000, "123456789", true);
         Course course = courses.findById(courseId).orElseThrow(); course.setStatus(CourseStatus.ARCHIVED); courses.save(course);
         mvc.perform(get("/api/courses/published/{id}/modules", courseId).header("Authorization", student))
@@ -162,7 +205,7 @@ class EnrollmentIntegrationTest {
                 .andExpect(status().isConflict());
     }
     @Test void simultaneousWebhookDeliveryActivatesOnce() throws Exception {
-        String code = json.readTree(enroll()).get("orderCode").asText();
+        String code = pendingOrder();
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
         try {

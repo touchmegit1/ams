@@ -28,4 +28,7 @@ public interface AuthService {
     AuthResponse.UserInfo getProfile(Integer userId);
 
     AuthResponse.UserInfo updateProfile(Integer userId, UpdateProfileRequest request);
+
+    /** Cap lai access token moi cho user dang dang nhap hop le (silent refresh). */
+    AuthResponse refresh(Integer userId);
 }

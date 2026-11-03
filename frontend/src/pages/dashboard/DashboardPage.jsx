@@ -1,26 +1,22 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
-import { FiHome, FiBookOpen, FiLayers, FiClipboard, FiUsers, FiArrowRight } from 'react-icons/fi';
+import { FiHome, FiBookOpen, FiLayers } from 'react-icons/fi';
 import WorkspaceHeader from '../../components/common/WorkspaceHeader.jsx';
 import StudentCourses from './StudentCourses.jsx';
-import StudentAssignments from './StudentAssignments.jsx';
+import StudentHome from './StudentHome.jsx';
 import TeacherCoursesHome from './TeacherCoursesHome.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const studentSections = [
   { id: 'home', label: 'Trang chủ', icon: FiHome, title: 'Bắt đầu từ đây', description: 'Theo dõi môn học, bài tập và tiến độ học tập trong một không gian.', detail: 'Xem tổng quan và chọn công việc bạn muốn tiếp tục.' },
-  { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Khóa học đang mở', description: 'Khám phá các khóa học đã xuất bản cùng nội dung học phần.', detail: 'Các khóa học đã xuất bản sẽ xuất hiện tại đây.' },
-  { id: 'enrollment', label: 'Đăng ký học', icon: FiLayers, title: 'Khóa học của tôi', description: 'Theo dõi các khóa đã đăng ký và thanh toán đang chờ.', detail: 'Thông tin đăng ký và thanh toán sẽ xuất hiện tại đây.' },
-  { id: 'assignments', label: 'Bài tập', icon: FiClipboard, title: 'Bài tập của bạn', description: 'Xem bài tập trong những khóa học bạn đã đăng ký.', detail: 'Bài tập được giao sẽ xuất hiện tại đây.' },
+  { id: 'enrollment', label: 'Khóa học của tôi', icon: FiBookOpen, title: 'Khóa học của tôi', description: 'Tiếp tục học trong các khóa bạn đã tham gia.', detail: 'Các khóa đã tham gia sẽ xuất hiện tại đây.' },
+  { id: 'courses', label: 'Khám phá khóa học', icon: FiLayers, title: 'Khám phá khóa học', description: 'Tìm khóa học mới và xem trước nội dung trước khi tham gia.', detail: 'Các khóa học đã xuất bản sẽ xuất hiện tại đây.' },
 ];
 
 const teacherSections = [
-  { id: 'home', label: 'Trang chủ', icon: FiHome, title: 'Tổ chức việc giảng dạy', description: 'Quản lý khóa học, nội dung và bài tập môn học tại một nơi.', detail: 'Xem tổng quan và chọn công việc bạn muốn tiếp tục.' },
-  { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Quản lý khóa học', description: 'Sắp xếp khóa học, học phần và bài học cho sinh viên.', detail: 'Các khóa học bạn phụ trách sẽ xuất hiện tại đây.' },
-  { id: 'content', label: 'Học phần', icon: FiLayers, title: 'Học phần & bài học', description: 'Xây dựng lộ trình học tập rõ ràng cho từng môn.', detail: 'Nội dung học phần và bài học sẽ xuất hiện tại đây.' },
-  { id: 'assignments', label: 'Bài tập', icon: FiClipboard, title: 'Quản lý bài tập', description: 'Tạo bài tập môn học và theo dõi kết quả nộp bài.', detail: 'Bài tập đã tạo và bài nộp của sinh viên sẽ xuất hiện tại đây.' },
-  { id: 'students', label: 'Sinh viên', icon: FiUsers, title: 'Sinh viên của bạn', description: 'Theo dõi hoạt động học tập của lớp.', detail: 'Danh sách sinh viên trong các khóa học sẽ xuất hiện tại đây.' },
+  { id: 'home', label: 'Trang chủ', icon: FiHome, title: 'Việc cần làm', description: 'Theo dõi công việc đang chờ và mở nhanh các lớp gần đây.', detail: 'Xem công việc cần xử lý và các khóa học gần đây.' },
+  { id: 'courses', label: 'Khóa học', icon: FiBookOpen, title: 'Khóa học của bạn', description: 'Mở lớp để quản lý học phần, bài tập, sinh viên và thanh toán.', detail: 'Các khóa học bạn phụ trách sẽ xuất hiện tại đây.' },
 ];
 
 function DashboardPage() {
@@ -30,11 +26,11 @@ function DashboardPage() {
   const activeId = searchParams.get('section') || 'home';
   const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
   const openSection = (id) => {
-    if (isTeacher && (id === 'courses' || id === 'content')) navigate('/courses');
-    else if (id === 'assignments' && isTeacher) navigate('/teacher/assignments');
+    if (isTeacher && id === 'courses') navigate('/courses');
     else setSearchParams(id === 'home' ? {} : { section: id });
   };
-  const openCourse = (courseId) => setSearchParams(courseId == null ? { section: activeId } : { section: activeId, course: String(courseId) });
+  const openCourse = (courseId, tab = 'lessons') => setSearchParams(courseId == null ? { section: activeId } : { section: activeId, course: String(courseId), courseTab: tab });
+  const openStudentCourse = (courseId, tab = 'lessons') => setSearchParams({ section: 'enrollment', course: String(courseId), courseTab: tab });
   useEffect(() => { if (user?.role === 'ADMIN') navigate('/admin', { replace: true }); }, [user?.role, navigate]);
   const sections = isTeacher ? teacherSections : studentSections;
   const active = sections.find((section) => section.id === activeId) || sections[0];
@@ -44,34 +40,11 @@ function DashboardPage() {
       <WorkspaceHeader sections={sections} activeId={active.id} onSelect={openSection} />
 
       <main className="dashboard-content">
-        {active.id === 'home' && isTeacher ? <TeacherCoursesHome /> : active.id === 'students' && isTeacher ? <TeacherCoursesHome studentFocus /> : active.id === 'home' ? (
-          <div className="dashboard-home">
-            <section className="dashboard-hero">
-              <p className="dashboard-eyebrow">KHÔNG GIAN {isTeacher ? 'GIẢNG DẠY' : 'HỌC TẬP'} CỦA BẠN</p>
-              <h1>Xin chào, {name}.<br /><span>{isTeacher ? 'Cùng xây dựng bài học tốt hơn.' : 'Tiếp tục hành trình học tập.'}</span></h1>
-              <p className="dashboard-hero-copy">{isTeacher ? 'Từ khóa học đến bài tập, mọi công việc giảng dạy đều có một nơi rõ ràng để bắt đầu.' : 'Từ khóa học đến bài tập, mọi bước tiến của bạn đều có một nơi rõ ràng để theo dõi.'}</p>
-              <button className="dashboard-primary-action" onClick={() => openSection('courses')}>Xem khóa học <FiArrowRight aria-hidden="true" /></button>
-            </section>
-            <section className="dashboard-journey" aria-labelledby="journey-title">
-              <div className="dashboard-section-heading"><p>KHÁM PHÁ AMS</p><h2 id="journey-title">{isTeacher ? 'Không gian làm việc của giảng viên' : 'Lộ trình học tập của bạn'}</h2></div>
-              <div className="dashboard-steps">
-                {sections.slice(1).map(({ id, label, icon: Icon, description }, index) => (
-                  <button className="dashboard-step" key={id} onClick={() => openSection(id)}>
-                    <span className="dashboard-step-number">0{index + 1}</span>
-                    <span className="dashboard-step-icon"><Icon aria-hidden="true" /></span>
-                    <strong>{label}</strong>
-                    <span>{description}</span>
-                    <FiArrowRight className="dashboard-step-arrow" aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
-            </section>
-          </div>
-        ) : (
+        {active.id === 'home' ? isTeacher ? <TeacherCoursesHome /> : <StudentHome name={name} onOpenSection={openSection} onOpenCourse={openStudentCourse} /> : (
           <section className={`dashboard-detail ${!isTeacher && (active.id === 'courses' || active.id === 'enrollment') ? 'dashboard-detail-courses' : ''}`} aria-labelledby="dashboard-detail-title">
             <button className="dashboard-back" onClick={() => openSection('home')}>Trang chủ <span aria-hidden="true">/</span> {active.label}</button>
             <div className="dashboard-detail-heading"><span className="dashboard-detail-icon"><active.icon aria-hidden="true" /></span><p>{isTeacher ? 'KHÔNG GIAN GIẢNG DẠY' : 'KHÔNG GIAN HỌC TẬP'}</p><h1 id="dashboard-detail-title">{active.title}</h1><span>{active.description}</span></div>
-            {!isTeacher && (active.id === 'courses' || active.id === 'enrollment') ? <StudentCourses initialView={active.id === 'enrollment' ? 'enrollment' : 'catalog'} initialCourseId={searchParams.get('course')} onCourseChange={openCourse} /> : !isTeacher && active.id === 'assignments' ? <StudentAssignments /> : <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>}
+            {!isTeacher && (active.id === 'courses' || active.id === 'enrollment') ? <StudentCourses initialView={active.id === 'enrollment' ? 'enrollment' : 'catalog'} initialCourseId={searchParams.get('course')} initialCourseTab={searchParams.get('courseTab')} onCourseChange={openCourse} /> : <div className="dashboard-empty"><strong>Chưa có nội dung</strong><p>{active.detail}</p></div>}
           </section>
         )}
       </main>

@@ -35,11 +35,15 @@ public class SubmissionService {
     private final CourseRepository courses;
     private final SubmissionFileStorage storage;
     private final ObjectMapper json;
+    private final QuizScoringService quizScoring;
+    private final SubmissionAiEvaluator aiEvaluator;
 
     public SubmissionService(AssignmentRepository assignments, SubmissionRepository submissions, EnrollmentRepository enrollments,
-                             UserRepository users, CourseRepository courses, SubmissionFileStorage storage, ObjectMapper json) {
+                             UserRepository users, CourseRepository courses, SubmissionFileStorage storage, ObjectMapper json,
+                             QuizScoringService quizScoring, SubmissionAiEvaluator aiEvaluator) {
         this.assignments = assignments; this.submissions = submissions; this.enrollments = enrollments; this.users = users;
         this.courses = courses; this.storage = storage; this.json = json;
+        this.quizScoring = quizScoring; this.aiEvaluator = aiEvaluator;
     }
 
     @Transactional
@@ -49,12 +53,13 @@ public class SubmissionService {
         if (assignment.getStatus() != Assignment.Status.PUBLISHED || assignment.getDueDate() == null || !assignment.getDueDate().isAfter(LocalDateTime.now()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bài tập đã đóng hoặc quá hạn nộp");
         if (!enrollments.existsByStudent_UserIdAndCourse_CourseIdAndStatus(studentId, assignment.getSubjectId(), EnrollmentStatus.ACTIVE))
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn cần ghi danh và thanh toán để nộp bài");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn cần tham gia khóa học để nộp bài");
 
         String submissionText = text == null ? "" : text.trim();
         if (submissionText.length() > MAX_TEXT_LENGTH)
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Nội dung bài nộp không được vượt quá 100.000 ký tự");
-        if ("QUIZ".equals(assignment.getAssignmentType())) validateQuiz(assignment, submissionText);
+        QuizScoringService.Result quizResult = null;
+        if ("QUIZ".equals(assignment.getAssignmentType())) { validateQuiz(assignment, submissionText); quizResult = quizScoring.score(assignment.getQuestionsJson(), submissionText, assignment.getMaxScore()); }
         else if (submissionText.isBlank() && (file == null || file.isEmpty()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hãy nhập câu trả lời hoặc đính kèm tệp");
 
@@ -77,9 +82,24 @@ public class SubmissionService {
         String previousKey = submission.getFileKey();
         submission.setSubmissionText(submissionText);
         if (newKey != null) { submission.setFileKey(newKey); submission.setOriginalFileName(originalName); }
+        submission.setSubmittedAt(Instant.now());
         submission.setStatus(Submission.Status.SUBMITTED); submission.setTeacherScore(null); submission.setTeacherFeedback(null); submission.setReviewedAt(null);
+        submission.setAiScore(null); submission.setAiFeedback(null); submission.setAiEvaluatedAt(null); submission.setAutoScore(null); submission.setAutoFeedback(null);
+        if (quizResult != null) {
+            submission.setAutoScore(quizResult.score());
+            submission.setAutoFeedback("Tự chấm: " + quizResult.correctCount() + "/" + quizResult.questionCount() + " câu đúng.");
+            submission.setAiEvaluationStatus(Submission.AiEvaluationStatus.NOT_REQUIRED);
+        } else if (newKey != null || submission.getFileKey() != null) {
+            submission.setAiEvaluationStatus(Submission.AiEvaluationStatus.PENDING);
+        } else submission.setAiEvaluationStatus(Submission.AiEvaluationStatus.UNSUPPORTED);
         Submission saved = submissions.save(submission);
         if (newKey != null && previousKey != null) storage.delete(previousKey);
+        if (quizResult == null && saved.getFileKey() != null) {
+            int savedId = saved.getSubmissionId();
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override public void afterCommit() { aiEvaluator.evaluate(savedId); }
+            });
+        }
         return studentView(saved);
     }
 
@@ -201,12 +221,17 @@ public class SubmissionService {
         result.put("submissionText", s.getSubmissionText()); result.put("fileName", s.getOriginalFileName());
         result.put("downloadUrl", s.getFileKey() == null ? null : "/api/student/assignments/" + s.getAssignment().getId() + "/submission/file");
         result.put("status", s.getStatus()); result.put("submittedAt", s.getSubmittedAt()); result.put("teacherScore", s.getTeacherScore());
-        result.put("teacherFeedback", s.getTeacherFeedback()); result.put("reviewedAt", s.getReviewedAt()); return result;
+        result.put("teacherFeedback", s.getTeacherFeedback()); result.put("reviewedAt", s.getReviewedAt());
+        result.put("aiEvaluationStatus", s.getAiEvaluationStatus());
+        if (s.getStatus() == Submission.Status.TEACHER_REVIEWED) { result.put("aiScore", s.getAiScore()); result.put("aiFeedback", s.getAiFeedback()); }
+        return result;
     }
 
     private Map<String, Object> teacherView(Submission s) {
         Map<String, Object> result = new LinkedHashMap<>(studentView(s)); result.put("studentId", s.getStudent().getUserId());
         result.put("studentName", s.getStudent().getFullName()); result.put("studentEmail", s.getStudent().getEmail());
+        result.put("aiScore", s.getAiScore()); result.put("aiFeedback", s.getAiFeedback()); result.put("aiEvaluationStatus", s.getAiEvaluationStatus());
+        result.put("aiEvaluatedAt", s.getAiEvaluatedAt()); result.put("autoScore", s.getAutoScore()); result.put("autoFeedback", s.getAutoFeedback());
         result.put("downloadUrl", s.getFileKey() == null ? null : "/api/teacher/submissions/" + s.getSubmissionId() + "/file");
         return result;
     }

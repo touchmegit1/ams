@@ -44,7 +44,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
+                request.setAttribute("ams.auth.failure", user == null ? "Tài khoản trong phiên đăng nhập không còn tồn tại." :
+                    !Boolean.TRUE.equals(user.getIsEnabled()) ? "Tài khoản đã bị vô hiệu hóa." :
+                    !Boolean.TRUE.equals(user.getIsVerified()) ? "Tài khoản chưa xác minh." : "Phiên đăng nhập đã bị thu hồi sau khi thông tin bảo mật thay đổi.");
             }
+        } else if (StringUtils.hasText(request.getHeader("Authorization"))) {
+            request.setAttribute("ams.auth.failure", tokenProvider.validationMessage(token));
+        } else if (request.getRequestURI().startsWith("/api/student/assignments/")) {
+            request.setAttribute("ams.auth.failure", "Request bài tập thiếu Bearer token xác thực.");
         }
 
         filterChain.doFilter(request, response);

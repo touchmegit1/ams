@@ -10,6 +10,15 @@ import java.util.Date;
 import static org.assertj.core.api.Assertions.*;
 
 class JwtSecurityTest {
+    @Test void defaultStudentSessionCoversLongAssignmentWork() {
+        assertThat(JwtTokenProvider.DEFAULT_EXPIRATION_MS).isEqualTo(3600000);
+        var key = Jwts.SIG.HS256.key().build();
+        var provider = new JwtTokenProvider(Base64.getEncoder().encodeToString(key.getEncoded()), JwtTokenProvider.DEFAULT_EXPIRATION_MS, new MockEnvironment());
+        String token = provider.generateToken(1, "student@example.com", "STUDENT", 1);
+        var claims = Jwts.parser().verifyWith(key).requireIssuer("ams").build().parseSignedClaims(token).getPayload();
+        assertThat(claims.getExpiration().getTime() - claims.getIssuedAt().getTime()).isEqualTo(3600000);
+    }
+
     @Test void requiresProductionSecretAndLimitsLifetime() {
         var prod = new MockEnvironment(); prod.setActiveProfiles("prod", "dev");
         assertThatThrownBy(() -> new JwtTokenProvider("", 900000, prod)).isInstanceOf(IllegalStateException.class);
@@ -30,6 +39,8 @@ class JwtSecurityTest {
         String expired = Jwts.builder().issuer("ams").subject("1").claim("ver", 0)
                 .issuedAt(new Date(0)).expiration(new Date(1)).signWith(key).compact();
         assertThat(provider.validateToken(expired)).isFalse();
+        assertThat(provider.validationMessage(expired)).contains("hết hạn");
+        assertThat(provider.validationMessage(null)).contains("thiếu Bearer token");
         String malformed = Jwts.builder().issuer("ams").subject("not-an-integer").claim("ver", 0)
                 .issuedAt(new Date()).expiration(new Date(System.currentTimeMillis() + 60000)).signWith(key).compact();
         assertThat(provider.validateToken(malformed)).isFalse();
