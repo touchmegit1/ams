@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
-import java.util.Comparator;
 
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Optional<Enrollment> findByStudent_UserIdAndCourse_CourseId(Integer studentId, Integer courseId);
@@ -17,6 +16,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     List<Enrollment> findAllByCourse_CourseIdOrderByCreatedAtAsc(Integer courseId);
     boolean existsByCourse_CourseId(Integer courseId);
     boolean existsByStudent_UserIdAndCourse_CourseIdAndStatus(Integer studentId, Integer courseId, EnrollmentStatus status);
+    long countByStudent_UserId(Integer studentId);
+    long countByCourse_CourseId(Integer courseId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from Enrollment e where e.id = :id")
     Optional<Enrollment> findWithLockById(@Param("id") Long id);

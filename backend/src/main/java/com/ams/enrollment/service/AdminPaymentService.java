@@ -3,6 +3,7 @@ package com.ams.enrollment.service;
 import com.ams.auth.entity.User;
 import com.ams.auth.repository.UserRepository;
 import com.ams.coursemgmt.entity.Course;
+import com.ams.coursemgmt.entity.CourseStatus;
 import com.ams.coursemgmt.repository.CourseRepository;
 import com.ams.enrollment.entity.Payment;
 import com.ams.enrollment.entity.PaymentStatus;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @Service
@@ -46,39 +48,24 @@ public class AdminPaymentService {
             }
         }
 
-        // 1. By Teacher
+        // 1. By Teacher Map
         Map<Integer, Map<String, Object>> teacherMap = new LinkedHashMap<>();
         for (User t : allTeachers) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("teacherId", t.getUserId());
             item.put("teacherName", t.getFullName());
             item.put("email", t.getEmail());
+            item.put("faculty", "Khoa CNTT");
             item.put("courseCount", 0);
             item.put("paidCount", 0L);
             item.put("revenue", BigDecimal.ZERO);
+            item.put("teacherShare", BigDecimal.ZERO);
+            item.put("platformShare", BigDecimal.ZERO);
+            item.put("courses", new ArrayList<Map<String, Object>>());
             teacherMap.put(t.getUserId(), item);
         }
 
-        // Count courses per teacher
-        for (Course c : allCourses) {
-            if (c.getTeacher() != null) {
-                Integer tId = c.getTeacher().getUserId();
-                teacherMap.computeIfAbsent(tId, id -> {
-                    Map<String, Object> item = new LinkedHashMap<>();
-                    item.put("teacherId", id);
-                    item.put("teacherName", c.getTeacher().getFullName());
-                    item.put("email", c.getTeacher().getEmail());
-                    item.put("courseCount", 0);
-                    item.put("paidCount", 0L);
-                    item.put("revenue", BigDecimal.ZERO);
-                    return item;
-                });
-                var item = teacherMap.get(tId);
-                item.put("courseCount", (Integer) item.get("courseCount") + 1);
-            }
-        }
-
-        // 2. By Course
+        // 2. By Course Map
         Map<Integer, Map<String, Object>> courseMap = new LinkedHashMap<>();
         for (Course c : allCourses) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -91,10 +78,34 @@ public class AdminPaymentService {
             item.put("paidCount", 0L);
             item.put("pendingCount", 0L);
             item.put("revenue", BigDecimal.ZERO);
+            item.put("teacherShare", BigDecimal.ZERO);
+            item.put("platformShare", BigDecimal.ZERO);
+            item.put("status", c.getStatus() == CourseStatus.PUBLISHED ? "Hoạt động" : "Tạm dừng");
             courseMap.put(c.getCourseId(), item);
+
+            // Add teacher course reference
+            if (c.getTeacher() != null) {
+                Integer tId = c.getTeacher().getUserId();
+                teacherMap.computeIfAbsent(tId, id -> {
+                    Map<String, Object> tItem = new LinkedHashMap<>();
+                    tItem.put("teacherId", id);
+                    tItem.put("teacherName", c.getTeacher().getFullName());
+                    tItem.put("email", c.getTeacher().getEmail());
+                    tItem.put("faculty", "Khoa CNTT");
+                    tItem.put("courseCount", 0);
+                    tItem.put("paidCount", 0L);
+                    tItem.put("revenue", BigDecimal.ZERO);
+                    tItem.put("teacherShare", BigDecimal.ZERO);
+                    tItem.put("platformShare", BigDecimal.ZERO);
+                    tItem.put("courses", new ArrayList<Map<String, Object>>());
+                    return tItem;
+                });
+                var tItem = teacherMap.get(tId);
+                tItem.put("courseCount", (Integer) tItem.get("courseCount") + 1);
+            }
         }
 
-        // 3. Transactions List
+        // 3. Process Transactions
         List<Map<String, Object>> txList = new ArrayList<>();
         for (Payment p : allPayments) {
             var enrollment = p.getEnrollment();
@@ -106,12 +117,14 @@ public class AdminPaymentService {
                 if (teacher != null && teacherMap.containsKey(teacher.getUserId())) {
                     var tItem = teacherMap.get(teacher.getUserId());
                     tItem.put("paidCount", (Long) tItem.get("paidCount") + 1);
-                    tItem.put("revenue", ((BigDecimal) tItem.get("revenue")).add(p.getAmount()));
+                    BigDecimal curRev = (BigDecimal) tItem.get("revenue");
+                    tItem.put("revenue", curRev.add(p.getAmount()));
                 }
                 if (course != null && courseMap.containsKey(course.getCourseId())) {
                     var cItem = courseMap.get(course.getCourseId());
                     cItem.put("paidCount", (Long) cItem.get("paidCount") + 1);
-                    cItem.put("revenue", ((BigDecimal) cItem.get("revenue")).add(p.getAmount()));
+                    BigDecimal curRev = (BigDecimal) cItem.get("revenue");
+                    cItem.put("revenue", curRev.add(p.getAmount()));
                 }
             } else if (p.getStatus() == PaymentStatus.PENDING) {
                 if (course != null && courseMap.containsKey(course.getCourseId())) {
@@ -136,8 +149,42 @@ public class AdminPaymentService {
             txList.add(tx);
         }
 
+        // 4. Compute 70/30 split on courses and teachers
+        for (var cItem : courseMap.values()) {
+            BigDecimal cRev = (BigDecimal) cItem.get("revenue");
+            BigDecimal tShare = cRev.multiply(new BigDecimal("0.70")).setScale(0, RoundingMode.HALF_UP);
+            BigDecimal pShare = cRev.multiply(new BigDecimal("0.30")).setScale(0, RoundingMode.HALF_UP);
+            cItem.put("teacherShare", tShare);
+            cItem.put("platformShare", pShare);
+
+            Integer tId = (Integer) cItem.get("teacherId");
+            if (tId != null && teacherMap.containsKey(tId)) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> teacherCourses = (List<Map<String, Object>>) teacherMap.get(tId).get("courses");
+                teacherCourses.add(cItem);
+            }
+        }
+
+        long teachersWithRevenue = 0;
+        for (var tItem : teacherMap.values()) {
+            BigDecimal tRev = (BigDecimal) tItem.get("revenue");
+            BigDecimal tShare = tRev.multiply(new BigDecimal("0.70")).setScale(0, RoundingMode.HALF_UP);
+            BigDecimal pShare = tRev.multiply(new BigDecimal("0.30")).setScale(0, RoundingMode.HALF_UP);
+            tItem.put("teacherShare", tShare);
+            tItem.put("platformShare", pShare);
+            if (tRev.compareTo(BigDecimal.ZERO) > 0) {
+                teachersWithRevenue++;
+            }
+        }
+
+        BigDecimal teacherRevenue = totalRevenue.multiply(new BigDecimal("0.70")).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal platformRevenue = totalRevenue.multiply(new BigDecimal("0.30")).setScale(0, RoundingMode.HALF_UP);
+
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("totalRevenue", totalRevenue);
+        summary.put("teacherRevenue", teacherRevenue);
+        summary.put("platformRevenue", platformRevenue);
+        summary.put("teachersWithRevenue", teachersWithRevenue);
         summary.put("paidTransactions", paidCount);
         summary.put("pendingTransactions", pendingCount);
         summary.put("totalCourses", allCourses.size());

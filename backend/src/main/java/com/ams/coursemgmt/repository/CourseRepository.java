@@ -17,6 +17,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
     List<Course> findAllByStatusOrderByCreatedAtDesc(CourseStatus status);
     boolean existsByCourseCodeIgnoreCase(String courseCode);
     boolean existsByCourseCodeIgnoreCaseAndCourseIdNot(String courseCode, Integer courseId);
+    long countByTeacher_UserId(Integer teacherId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Course c where c.courseId = :id")
     Optional<Course> findLockedById(@Param("id") Integer id);
