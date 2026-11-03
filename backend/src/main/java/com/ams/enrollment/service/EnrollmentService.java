@@ -6,15 +6,21 @@ import com.ams.coursemgmt.entity.Course;
 import com.ams.coursemgmt.entity.CourseStatus;
 import com.ams.coursemgmt.repository.CourseRepository;
 import com.ams.enrollment.dto.EnrollmentResponse;
-import com.ams.enrollment.entity.*;
-import com.ams.enrollment.repository.*;
+import com.ams.enrollment.entity.Enrollment;
+import com.ams.enrollment.entity.EnrollmentStatus;
+import com.ams.enrollment.entity.Payment;
+import com.ams.enrollment.entity.PaymentStatus;
+import com.ams.enrollment.repository.EnrollmentRepository;
+import com.ams.enrollment.repository.PaymentRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -24,14 +30,17 @@ public class EnrollmentService {
     private final PaymentRepository payments;
     private final CourseRepository courses;
     private final UserRepository users;
-    @Value("${sepay.bank:}") private String bank;
+    private final SepayApiService sepayApiService;
+    @Value("${sepay.bank:MBBank}") private String bank;
+    @Value("${sepay.account-number:VQRQAHKMG5868}") private String accountNumber;
 
     public EnrollmentService(EnrollmentRepository enrollments, PaymentRepository payments,
-            CourseRepository courses, UserRepository users) {
+            CourseRepository courses, UserRepository users, SepayApiService sepayApiService) {
         this.enrollments = enrollments;
         this.payments = payments;
         this.courses = courses;
         this.users = users;
+        this.sepayApiService = sepayApiService;
     }
 
     @Transactional
@@ -52,10 +61,72 @@ public class EnrollmentService {
         }
         Payment latest = payments.findTopByEnrollment_IdOrderByCreatedAtDescIdDesc(enrollment.getId()).orElse(null);
         Instant now = Instant.now();
-        if (latest != null && latest.getStatus() == PaymentStatus.PENDING) latest.setStatus(PaymentStatus.EXPIRED);
+
+        // 1. Khóa học miễn phí -> Kích hoạt ngay
+        if (course.getPrice() == null || course.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            if (latest != null && latest.getStatus() == PaymentStatus.PENDING) latest.setStatus(PaymentStatus.EXPIRED);
+            enrollment.setStatus(EnrollmentStatus.ACTIVE);
+            enrollment.setActivatedAt(now);
+            enrollments.save(enrollment);
+            return response(enrollment);
+        }
+
+        // 2. Khóa học có phí -> Tạo / lấy lệnh thanh toán VietQR
+        if (latest != null && latest.getStatus() == PaymentStatus.PENDING && now.isBefore(latest.getExpiresAt())) {
+            return response(enrollment, latest);
+        }
+        if (latest != null && latest.getStatus() == PaymentStatus.PENDING) {
+            latest.setStatus(PaymentStatus.EXPIRED);
+            payments.save(latest);
+        }
+
+        String accNum = (accountNumber != null && !accountNumber.isBlank()) ? accountNumber : "VQRQAHKMG5868";
+        Payment payment = new Payment();
+        payment.setEnrollment(enrollment);
+        payment.setAmount(course.getPrice());
+        payment.setAccountNumber(accNum);
+        String code = "AMS" + enrollment.getId() + "T" + (now.getEpochSecond() % 100000);
+        payment.setOrderCode(code);
+        payment.setExpiresAt(now.plus(Duration.ofHours(5)));
+        payment.setStatus(PaymentStatus.PENDING);
+        payment = payments.save(payment);
+
+        enrollment.setStatus(EnrollmentStatus.PENDING);
+        enrollments.save(enrollment);
+        return response(enrollment, payment);
+    }
+
+    @Transactional
+    public EnrollmentResponse getStatus(Integer studentId, Integer courseId) {
+        requireStudent(studentId);
+        Enrollment enrollment = enrollments.findByStudent_UserIdAndCourse_CourseId(studentId, courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông tin đăng ký khóa học"));
+        Payment payment = payments.findTopByEnrollment_IdOrderByCreatedAtDescIdDesc(enrollment.getId()).orElse(null);
+        if (enrollment.getStatus() == EnrollmentStatus.PENDING && payment != null && payment.getStatus() == PaymentStatus.PENDING) {
+            boolean updated = sepayApiService.checkAndUpdatePayment(payment);
+            if (updated) {
+                enrollment = enrollments.findById(enrollment.getId()).orElse(enrollment);
+            }
+        }
+        return response(enrollment, payment);
+    }
+
+    @Transactional
+    public EnrollmentResponse confirmPayment(Integer studentId, Integer courseId) {
+        User student = requireStudent(studentId);
+        Enrollment enrollment = enrollments.findByStudent_UserIdAndCourse_CourseId(studentId, courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông tin đăng ký khóa học"));
+        Payment payment = payments.findTopByEnrollment_IdOrderByCreatedAtDescIdDesc(enrollment.getId()).orElse(null);
+        Instant now = Instant.now();
+        if (payment != null && payment.getStatus() == PaymentStatus.PENDING) {
+            payment.setStatus(PaymentStatus.PAID);
+            payment.setPaidAt(now);
+            payments.save(payment);
+        }
         enrollment.setStatus(EnrollmentStatus.ACTIVE);
         enrollment.setActivatedAt(now);
-        return response(enrollment);
+        enrollments.save(enrollment);
+        return response(enrollment, payment);
     }
 
     @Transactional(readOnly = true)
@@ -92,13 +163,18 @@ public class EnrollmentService {
         }
         String paymentStatus = payment == null ? null : payment.getStatus().name();
         if (payment != null && status.equals("EXPIRED") && payment.getStatus() == PaymentStatus.PENDING) paymentStatus = "EXPIRED";
+
+        String accNum = (accountNumber != null && !accountNumber.isBlank()) ? accountNumber : "VQRQAHKMG5868";
+        String bankName = (bank != null && !bank.isBlank()) ? bank : "MBBank";
+
         String qr = payment == null || !status.equals("PENDING") ? null
-                : "https://vietqr.app/img?acc=" + encode(payment.getAccountNumber()) + "&bank=" + encode(bank)
-                + "&amount=" + payment.getAmount().toBigIntegerExact() + "&des=" + encode(payment.getOrderCode()) + "&template=compact";
+                : "https://vietqr.app/img?acc=" + encode(accNum) + "&bank=" + encode(bankName)
+                + "&amount=" + payment.getAmount().toBigIntegerExact() + "&des=" + encode(payment.getOrderCode());
+
         return new EnrollmentResponse(enrollment.getId(), enrollment.getCourse().getCourseId(),
                 enrollment.getCourse().getTitle(), enrollment.getCourse().getTeacher().getFullName(), status, payment == null ? null : payment.getId(),
                 paymentStatus, payment == null ? null : payment.getAmount(), payment == null ? null : payment.getOrderCode(),
-                payment == null ? null : bank, payment == null ? null : payment.getAccountNumber(),
+                payment == null ? null : bankName, payment == null ? null : accNum,
                 payment == null ? null : payment.getOrderCode(), qr, payment == null ? null : payment.getExpiresAt());
     }
 

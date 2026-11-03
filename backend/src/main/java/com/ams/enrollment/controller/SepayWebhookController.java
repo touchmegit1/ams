@@ -12,8 +12,9 @@ public class SepayWebhookController {
     @PostMapping
     public Map<String, Boolean> receive(@RequestBody byte[] rawBody,
             @RequestHeader(value = "X-SePay-Timestamp", required = false) String timestamp,
-            @RequestHeader(value = "X-SePay-Signature", required = false) String signature) {
-        service.verify(rawBody, timestamp, signature);
+            @RequestHeader(value = "X-SePay-Signature", required = false) String signature,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        service.verify(rawBody, timestamp, signature, authHeader);
         service.process(rawBody);
         return Map.of("success", true);
     }

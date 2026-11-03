@@ -20,3 +20,305 @@
 .sc-catalog-groups{display:grid;gap:32px}.sc-group-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid #d7e1d9}.sc-group-heading h3{margin:0;color:#1d2b25;font-size:19px;letter-spacing:-.03em}.sc-group-heading>span{color:#718579;font-size:12px}.sc-card-teacher{display:block;margin-top:10px;color:#4e6857;font-size:11px;font-weight:650}.sc-instructor{margin:15px 0 0;color:#607168;font-size:13px}.sc-instructor strong{color:#284b3b}
 .sc-my-courses{max-width:1120px;margin:auto}.sc-my-heading{display:flex;align-items:end;justify-content:space-between;gap:24px;padding:10px 0 25px;border-bottom:1px solid #d7e1d9}.sc-my-heading p{margin-bottom:8px;color:#47705a;font-size:11px;font-weight:800;letter-spacing:.15em}.sc-my-heading h2{font-size:32px;letter-spacing:-.045em}.sc-my-heading>div:first-child>span{display:block;margin-top:9px;color:#68786e;font-size:14px}.sc-my-stats{display:flex;gap:10px}.sc-my-stats>span{display:grid;gap:3px;min-width:115px;padding:13px 16px;border:1px solid #d7e1d9;border-radius:9px;background:#fff;color:#718579;font-size:11px}.sc-my-stats strong{color:#315b49;font-size:22px}.sc-my-tabs{display:flex;gap:7px;overflow-x:auto;padding:22px 0}.sc-my-tabs button{flex:none;padding:9px 14px;border:1px solid #d0dcd3;border-radius:7px;background:#fff;color:#50665a;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.sc-my-tabs button.is-active{border-color:#315b49;background:#315b49;color:#fff}.sc-my-list{display:grid;gap:12px}.sc-my-row{display:flex;align-items:center;gap:16px;padding:17px;border:1px solid #d7e1d9;border-radius:11px;background:#fff}.sc-my-mark{display:grid;place-items:center;width:62px;height:62px;flex:none;border-radius:8px;background:#e6f0e8;color:#315b49;font-size:27px}.sc-my-info{flex:1;min-width:0}.sc-my-info small{color:#47705a;font-size:10px;font-weight:800;letter-spacing:.09em}.sc-my-info h3{overflow:hidden;margin:5px 0;color:#1d2b25;font-size:16px;text-overflow:ellipsis;white-space:nowrap}.sc-my-info p{color:#68786e;font-size:12px}.sc-my-state{display:grid;justify-items:end;gap:6px;min-width:130px}.sc-my-state small{color:#718579;font-size:11px;font-variant-numeric:tabular-nums}.sc-my-badge{padding:6px 9px;border-radius:5px;background:#f5eadd;color:#9a612b;font-size:11px;font-weight:800}.sc-my-badge.is-active{background:#e6f4e9;color:#28744e}.sc-my-badge.is-pending{background:#fff2da;color:#966419}.sc-my-open{display:inline-flex;align-items:center;gap:7px;flex:none;padding:9px 11px;border:1px solid #b8d1be;border-radius:7px;background:#fff;color:#315b49;font:inherit;font-size:12px;font-weight:700;cursor:pointer}.sc-my-open:hover{background:#f4f8f5}
 @media(max-width:700px){.sc-my-heading{align-items:start;flex-direction:column}.sc-my-stats{width:100%}.sc-my-stats>span{flex:1}.sc-my-row{flex-wrap:wrap}.sc-my-state{margin-left:auto}.sc-my-open{width:100%;justify-content:center}.sc-my-info{flex-basis:calc(100% - 78px)}}
+
+
+/* VietQR Payment Modal */
+.sc-payment-modal {
+  position: relative;
+  width: min(680px, 96vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 32px 36px;
+  border: 1px solid #d7e1d9;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(18, 35, 25, 0.35);
+  color: #1d2b25;
+}
+.sc-payment-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.sc-payment-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  margin-bottom: 8px;
+  border-radius: 20px;
+  background: #e6f4ea;
+  color: #1e7040;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.sc-payment-header h2 {
+  margin: 4px 0 6px;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  color: #1a3326;
+}
+.sc-payment-header p {
+  margin: 0;
+  color: #4a6355;
+  font-size: 14px;
+}
+.sc-payment-content {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.sc-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border: 1.5px dashed #2d6a4f;
+  border-radius: 14px;
+  background: #f7faf8;
+  text-align: center;
+}
+.sc-qr-code {
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+.sc-qr-hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #557563;
+  font-weight: 500;
+}
+.sc-payment-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sc-payment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #e1ebe3;
+  border-radius: 9px;
+  background: #fcfdfc;
+  font-size: 13px;
+}
+.sc-payment-row > span {
+  color: #60796b;
+  flex-shrink: 0;
+}
+.sc-payment-row > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+.sc-payment-row strong {
+  color: #1d2b25;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sc-payment-amount {
+  color: #1f6b42 !important;
+  font-size: 16px !important;
+  font-weight: 800;
+}
+.sc-payment-order-code {
+  color: #925310 !important;
+  font-family: monospace;
+  font-size: 13px !important;
+  font-weight: 700;
+}
+.sc-copy-btn {
+  padding: 3px 8px;
+  border: 1px solid #c2d6c7;
+  border-radius: 5px;
+  background: #f0f6f2;
+  color: #27563c;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sc-copy-btn:hover {
+  background: #27563c;
+  color: #fff;
+  border-color: #27563c;
+}
+.sc-copy-toast {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #204d36;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  font-weight: 600;
+  animation: fadeIn 0.2s;
+}
+.sc-payment-notice-box {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fbf5e9;
+  border: 1px solid #ebd9b5;
+  color: #7b581c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sc-payment-notice-box p {
+  margin: 0;
+}
+.sc-payment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.sc-payment-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #1e5c3a;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(30, 92, 58, 0.25);
+  transition: background 0.18s;
+}
+.sc-payment-confirm-btn:hover {
+  background: #15452b;
+}
+.sc-payment-cancel-btn {
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: #748a7c;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.sc-payment-cancel-btn:hover {
+  color: #243d2f;
+  text-decoration: underline;
+}
+
+/* Waiting state */
+.sc-payment-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 16px;
+}
+.sc-payment-spinner {
+  width: 52px;
+  height: 52px;
+  border: 4px solid #e1ede4;
+  border-top-color: #26704c;
+  border-radius: 50%;
+  animation: scSpin 0.9s linear infinite;
+  margin-bottom: 20px;
+}
+@keyframes scSpin {
+  to { transform: rotate(360deg); }
+}
+.sc-payment-waiting h3 {
+  margin: 0 0 10px;
+  color: #173827;
+  font-size: 20px;
+}
+.sc-payment-waiting-desc {
+  color: #557061;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+.sc-payment-countdown-bar {
+  width: min(340px, 100%);
+  height: 8px;
+  border-radius: 4px;
+  background: #e2ede4;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.sc-payment-countdown-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #388e3c, #1b5e20);
+  transition: width 1s linear;
+}
+.sc-payment-waiting small {
+  color: #83998b;
+  font-size: 12px;
+}
+
+@media (max-width: 620px) {
+  .sc-payment-modal {
+    padding: 24px 18px;
+  }
+  .sc-payment-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.sc-payment-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sc-payment-status-row p {
+  margin: 0;
+  color: #7b581c;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+.sc-pulse-ring {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2e7d32;
+  box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.7);
+  animation: scPulseRing 1.6s infinite;
+  flex-shrink: 0;
+}
+@keyframes scPulseRing {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 7px rgba(46, 125, 50, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0);
+  }
+}
+.sc-btn-spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: scSpin 0.8s linear infinite;
+  vertical-align: middle;
+}

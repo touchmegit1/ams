@@ -85,7 +85,7 @@ function CourseCurriculumPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = ['overview', 'content', 'assignments', 'students', 'payments'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
+  const activeTab = ['overview', 'content', 'assignments', 'students'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
   const [course, setCourse] = useState(null);
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -98,14 +98,10 @@ function CourseCurriculumPage() {
   const [submitError, setSubmitError] = useState('');
   const [workspaceStats, setWorkspaceStats] = useState(null);
   const [students, setStudents] = useState([]);
-  const [paymentSummary, setPaymentSummary] = useState(null);
   const [courseAssignments, setCourseAssignments] = useState([]);
   const [workspaceError, setWorkspaceError] = useState('');
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
-  const [paymentSearch, setPaymentSearch] = useState('');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
-  const [paymentPage, setPaymentPage] = useState(0);
   const [assignmentSearch, setAssignmentSearch] = useState('');
   const [assignmentStatusFilter, setAssignmentStatusFilter] = useState('ALL');
   const [assignmentDateFilter, setAssignmentDateFilter] = useState('');
@@ -133,7 +129,6 @@ function CourseCurriculumPage() {
     let active = true;
     const requests = [api.get('/teacher/courses')];
     if (activeTab === 'students') requests.push(api.get(`/teacher/courses/${courseId}/students`));
-    if (activeTab === 'payments') requests.push(api.get(`/teacher/courses/${courseId}/payments`));
     if (activeTab === 'assignments') requests.push(api.get('/assignments', { params: { subjectId: courseId, page: 0, size: 100 } }));
     setWorkspaceError('');
     setWorkspaceLoading(true);
@@ -141,7 +136,6 @@ function CourseCurriculumPage() {
       if (!active) return;
       setWorkspaceStats((Array.isArray(all.data) ? all.data : []).find((item) => String(item.courseId) === String(courseId)) || null);
       if (activeTab === 'students') setStudents(Array.isArray(extra.data) ? extra.data : []);
-      if (activeTab === 'payments') setPaymentSummary(extra.data);
       if (activeTab === 'assignments') setCourseAssignments(extra.data?.content || []);
     }).catch((error) => { if (active) setWorkspaceError(errorMessage(error)); })
       .finally(() => { if (active) setWorkspaceLoading(false); });
@@ -235,11 +229,6 @@ function CourseCurriculumPage() {
     const query = studentSearch.trim().toLocaleLowerCase('vi');
     return students.filter((student) => !query || [student.fullName, student.email].some((value) => value?.toLocaleLowerCase('vi').includes(query)));
   }, [students, studentSearch]);
-  const visiblePayments = useMemo(() => (paymentSummary?.payments || []).filter((payment) => {
-    const query = paymentSearch.trim().toLocaleLowerCase('vi');
-    return (paymentStatusFilter === 'ALL' || payment.status === paymentStatusFilter)
-      && (!query || payment.studentName?.toLocaleLowerCase('vi').includes(query));
-  }), [paymentSummary, paymentSearch, paymentStatusFilter]);
   const visibleCourseAssignments = useMemo(() => {
     const query = assignmentSearch.trim().toLocaleLowerCase('vi');
     return courseAssignments.filter((item) => {
@@ -261,9 +250,6 @@ function CourseCurriculumPage() {
       return matchQuery && matchStatus && matchDate;
     });
   }, [courseAssignments, assignmentSearch, assignmentStatusFilter, assignmentDateFilter]);
-  const paginatedPayments = visiblePayments.slice(paymentPage * 10, paymentPage * 10 + 10);
-  const totalPaymentPages = Math.max(1, Math.ceil(visiblePayments.length / 10));
-  useEffect(() => { setPaymentPage(0); }, [paymentSearch, paymentStatusFilter]);
 
   if (loading) return <main className="cm-page"><div className="cm-loading cm-page-loading">Đang tải khóa học…</div></main>;
   if (loadError || !course) return <main className="cm-page"><div className="cm-container"><div className="cm-alert" role="alert"><span>{loadError || 'Không tìm thấy khóa học'}</span><button onClick={() => navigate('/courses')}>Về danh sách khóa học</button></div></div></main>;
@@ -291,7 +277,7 @@ function CourseCurriculumPage() {
         </section>
 
         <nav className="course-class-tabs" aria-label="Quản lý lớp học">
-          {[['overview', 'Tổng quan'], ['content', 'Học phần'], ['assignments', 'Bài tập'], ['students', 'Sinh viên'], ['payments', 'Thanh toán']].map(([id, label]) =>
+          {[['overview', 'Tổng quan'], ['content', 'Học phần'], ['assignments', 'Bài tập'], ['students', 'Sinh viên']].map(([id, label]) =>
             <button key={id} className={activeTab === id ? 'is-active' : ''} onClick={() => setSearchParams({ tab: id })} aria-current={activeTab === id ? 'page' : undefined}>{label}</button>)}
         </nav>
         {workspaceError && <div className="course-workspace-alert" role="alert">{workspaceError}</div>}
@@ -405,17 +391,7 @@ function CourseCurriculumPage() {
           {workspaceLoading ? <p className="course-workspace-loading" role="status">Đang tải danh sách sinh viên…</p> : !students.length ? <div className="cm-empty-state"><span className="cm-empty-icon"><FiUsers aria-hidden="true" /></span><h3>Chưa có sinh viên</h3><p>Sinh viên ghi danh khóa học sẽ xuất hiện tại đây.</p></div> : !visibleStudents.length ? <div className="course-workspace-empty">Không tìm thấy sinh viên phù hợp.</div> : <div className="course-workspace-table-wrap"><table className="cm-table cm-student-table"><thead><tr><th>Sinh viên</th><th>Email</th><th>Ghi danh</th><th>Thanh toán</th><th>Đã trả</th></tr></thead><tbody>{visibleStudents.map((item) => <tr key={item.studentId}><td><strong className="cm-student-name">{item.fullName}</strong></td><td>{item.email}</td><td><span className={`cm-work-status status-${item.enrollmentStatus?.toLowerCase()}`}>{item.enrollmentStatus === 'ACTIVE' ? 'Đang học' : item.enrollmentStatus === 'PENDING' ? 'Chờ kích hoạt' : 'Hết hạn'}</span></td><td><span className={`cm-work-status status-${item.paymentStatus?.toLowerCase()}`}>{paymentStatusLabel[item.paymentStatus] || item.paymentStatus}</span></td><td>{item.paymentStatus === 'PAID' ? formatCoursePrice(item.paidAmount) : item.paymentStatus === 'FREE' ? 'Miễn phí' : '—'}</td></tr>)}</tbody></table></div>}
         </section>}
 
-        {activeTab === 'payments' && !paymentSummary && <section className="course-workspace-panel cm-payment-panel"><p className="course-workspace-loading" role="status">{workspaceLoading ? 'Đang tải thanh toán…' : 'Chưa có dữ liệu thanh toán.'}</p></section>}
-        {activeTab === 'payments' && paymentSummary && <section className="course-workspace-panel cm-payment-panel">
-          <div className="course-workspace-panel-heading"><div><p className="cm-eyebrow">ĐỐI SOÁT KHÓA HỌC</p><h2>Thanh toán khóa học</h2><p>Tổng hợp thanh toán theo danh sách sinh viên ghi danh.</p></div><div className="cm-payment-tools"><label className="cm-workspace-search"><FiSearch aria-hidden="true" /><span className="sr-only">Tìm thanh toán</span><input value={paymentSearch} onChange={(event) => setPaymentSearch(event.target.value)} placeholder="Tìm sinh viên" /></label><button className="cm-button" onClick={() => exportPayments(visiblePayments, course.courseCode)} disabled={!visiblePayments.length}><FiDownload aria-hidden="true" /> Tải báo cáo CSV</button></div></div>
-          <div className="course-payment-totals">
-            <div className="is-paid"><span>Đã thu</span><strong>{formatCoursePrice(paymentSummary.paidAmount)}</strong><small>{paymentSummary.paidCount} thanh toán thành công</small><div className="cm-payment-progress"><span style={{ width: `${paymentSummary.payments?.length ? Math.min(100, Math.round(paymentSummary.paidCount * 100 / paymentSummary.payments.length)) : 0}%` }} /></div><small>Tỉ lệ đã thanh toán: {paymentSummary.payments?.length ? Math.round(paymentSummary.paidCount * 100 / paymentSummary.payments.length) : 0}%</small></div>
-            <div className="is-waiting"><span>Đang chờ</span><strong>{formatCoursePrice(paymentSummary.pendingAmount)}</strong><small>{paymentSummary.pendingCount} giao dịch đang chờ xác nhận</small></div>
-          </div>
-          <div className="cm-payment-filter-row"><span>{visiblePayments.length} sinh viên</span><label><span className="sr-only">Lọc trạng thái thanh toán</span><select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="PAID">Đã thanh toán</option><option value="NOT_COLLECTED">Chưa thu</option><option value="PENDING">Đang chờ</option><option value="FREE">Miễn phí</option><option value="EXPIRED">Hết hạn</option></select></label></div>
-          {!visiblePayments.length ? <div className="course-workspace-empty">Không có giao dịch phù hợp với bộ lọc.</div> : <div className="course-workspace-table-wrap"><table className="cm-table cm-payment-table"><thead><tr><th>Sinh viên</th><th>Trạng thái</th><th>Số tiền đã trả</th><th>Ngày thanh toán</th></tr></thead><tbody>{paginatedPayments.map((item) => <tr key={item.studentId}><td><strong className="cm-student-name">{item.studentName}</strong></td><td><span className={`cm-work-status status-${item.status?.toLowerCase()}`}>{paymentStatusLabel[item.status] || item.status}</span></td><td>{item.status === 'PAID' ? formatCoursePrice(item.amount) : item.status === 'FREE' ? 'Miễn phí' : item.status === 'NOT_COLLECTED' ? 'Chưa thu' : '—'}</td><td>{paymentDate(item.paidAt)}</td></tr>)}</tbody></table></div>}
-          {visiblePayments.length > 0 && <div className="cm-payment-pagination"><span>Hiển thị {paymentPage * 10 + 1}–{Math.min((paymentPage + 1) * 10, visiblePayments.length)} / {visiblePayments.length}</span><div><button className="cm-button cm-button-small" disabled={paymentPage === 0} onClick={() => setPaymentPage((page) => Math.max(0, page - 1))}>Trước</button><span>{paymentPage + 1} / {totalPaymentPages}</span><button className="cm-button cm-button-small" disabled={paymentPage + 1 >= totalPaymentPages} onClick={() => setPaymentPage((page) => Math.min(totalPaymentPages - 1, page + 1))}>Tiếp</button></div></div>}
-        </section>}
+        
       </div>
 
       {viewingLesson && <div className="cm-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingLesson(null); }}>

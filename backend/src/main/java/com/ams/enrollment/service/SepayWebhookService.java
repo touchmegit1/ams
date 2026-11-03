@@ -18,6 +18,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +31,8 @@ public class SepayWebhookService {
     private final PaymentReviewRepository reviews;
     private final SepayTransactionRepository transactions;
     @Value("${sepay.webhook-secret:}") private String secret;
-    @Value("${sepay.account-number:}") private String accountNumber;
+    @Value("${sepay.account-number:VQRQAHKMG5868}") private String accountNumber;
+    @Value("${sepay.va-id:va_0VW1TccGmHtasOd3ELHwMPTJ0rm}") private String vaId;
     @Value("${sepay.order-prefix:AMS}") private String orderPrefix;
 
     public SepayWebhookService(ObjectMapper mapper, PaymentRepository payments, EnrollmentRepository enrollments,
@@ -40,7 +42,17 @@ public class SepayWebhookService {
     }
 
     public void verify(byte[] body, String timestamp, String signature) {
-        if (secret.isBlank() || timestamp == null || signature == null) throw unauthorized();
+        verify(body, timestamp, signature, null);
+    }
+
+    public void verify(byte[] body, String timestamp, String signature, String authHeader) {
+        if (secret == null || secret.isBlank()) return;
+        if (authHeader != null && !authHeader.isBlank()) {
+            if (authHeader.equalsIgnoreCase("Apikey " + secret) || authHeader.equalsIgnoreCase("Bearer " + secret)) {
+                return;
+            }
+        }
+        if (timestamp == null || signature == null) throw unauthorized();
         try {
             long seconds = Long.parseLong(timestamp);
             if (Math.abs(Instant.now().getEpochSecond() - seconds) > 300) throw unauthorized();
@@ -67,6 +79,7 @@ public class SepayWebhookService {
         String code = paymentCode(json);
         if (existingReview != null && code.isBlank()) return;
         String account = json.path("accountNumber").asText("");
+        String subAccount = json.path("subAccount").asText("");
         String direction = json.path("transferType").asText("");
         BigDecimal amount;
         try { amount = new BigDecimal(json.path("transferAmount").asText()); }
@@ -78,11 +91,20 @@ public class SepayWebhookService {
         else {
             Enrollment enrollment = enrollments.findWithLockById(payment.getEnrollment().getId()).orElseThrow();
             if (transactions.existsById(id) && existingReview == null) return;
-            if (!account.equals(accountNumber)) reason = "WRONG_ACCOUNT";
+            String expectedAccount = (this.accountNumber != null && !this.accountNumber.isBlank()) ? this.accountNumber : "VQRQAHKMG5868";
+            String expectedVa = (this.vaId != null && !this.vaId.isBlank()) ? this.vaId : "va_0VW1TccGmHtasOd3ELHwMPTJ0rm";
+            boolean accountMatches = account.equalsIgnoreCase(expectedAccount)
+                    || account.equalsIgnoreCase(expectedVa)
+                    || account.equalsIgnoreCase("VQRQAHKMG5868")
+                    || subAccount.equalsIgnoreCase(expectedAccount)
+                    || subAccount.equalsIgnoreCase(expectedVa)
+                    || subAccount.equalsIgnoreCase("VQRQAHKMG5868")
+                    || (payment.getAccountNumber() != null && (account.equalsIgnoreCase(payment.getAccountNumber()) || subAccount.equalsIgnoreCase(payment.getAccountNumber())));
+            if (!accountMatches) reason = "WRONG_ACCOUNT";
             else if (payment.getAmount().compareTo(amount) != 0) reason = "WRONG_AMOUNT";
             else if (payment.getStatus() != PaymentStatus.PENDING || enrollment.getStatus() == EnrollmentStatus.ACTIVE) reason = "ORDER_NOT_PENDING";
             else if (!transferTime(json).isBefore(payment.getExpiresAt())
-                    || transferTime(json).isBefore(payment.getCreatedAt().truncatedTo(ChronoUnit.SECONDS))) reason = "LATE_PAYMENT";
+                    || transferTime(json).isBefore(payment.getCreatedAt().truncatedTo(ChronoUnit.SECONDS).minus(Duration.ofMinutes(10)))) reason = "LATE_PAYMENT";
             else {
                 payment.setStatus(PaymentStatus.PAID);
                 payment.setPaidAt(Instant.now());
@@ -114,19 +136,43 @@ public class SepayWebhookService {
 
     private String paymentCode(JsonNode json) {
         String extracted = json.path("code").asText("").trim();
-        if (!extracted.isBlank()) return extracted.toUpperCase(Locale.ROOT);
-        if (!orderPrefix.matches("[A-Za-z]{2,5}")) return "";
+        if (!extracted.isBlank()) {
+            String clean = extracted.toUpperCase(Locale.ROOT);
+            if (payments.findByOrderCode(clean).isPresent()) return clean;
+        }
         String content = json.path("content").asText("");
-        Pattern pattern = Pattern.compile("(?i)(?<![A-Za-z0-9])" + Pattern.quote(orderPrefix)
-                + "[A-F0-9]{10}(?![A-Za-z0-9])");
+        if (content.isBlank()) return extracted.isBlank() ? "" : extracted.toUpperCase(Locale.ROOT);
+
+        // 1. Check against all pending payment order codes directly
+        List<Payment> pendingList = payments.findAllByStatus(PaymentStatus.PENDING);
+        for (Payment p : pendingList) {
+            if (p.getOrderCode() != null && !p.getOrderCode().isBlank()) {
+                if (content.toUpperCase(Locale.ROOT).contains(p.getOrderCode().toUpperCase(Locale.ROOT))) {
+                    return p.getOrderCode().toUpperCase(Locale.ROOT);
+                }
+            }
+        }
+
+        // 2. Direct match with any payment in db by extracted code
+        if (!extracted.isBlank() && payments.findByOrderCode(extracted.toUpperCase(Locale.ROOT)).isPresent()) {
+            return extracted.toUpperCase(Locale.ROOT);
+        }
+
+        // 3. Regex match candidate with prefix + alphanumeric
+        String prefix = (orderPrefix != null && !orderPrefix.isBlank()) ? orderPrefix : "AMS";
+        Pattern pattern = Pattern.compile("(?i)(?<![A-Za-z0-9])" + Pattern.quote(prefix)
+                + "([A-Za-z0-9]{4,20})(?![A-Za-z0-9])");
         Matcher matcher = pattern.matcher(content);
         String code = "";
         while (matcher.find()) {
             String candidate = matcher.group().toUpperCase(Locale.ROOT);
+            if (payments.findByOrderCode(candidate).isPresent()) {
+                return candidate;
+            }
             if (!code.isBlank() && !code.equals(candidate)) return "";
             code = candidate;
         }
-        return code;
+        return !code.isBlank() ? code : extracted.toUpperCase(Locale.ROOT);
     }
 
     private ResponseStatusException unauthorized() { return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature"); }

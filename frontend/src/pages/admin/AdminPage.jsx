@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSearch, FiUsers, FiLogOut, FiChevronLeft, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiLogOut, FiChevronLeft, FiChevronRight, FiRefreshCw, FiDollarSign, FiFileText } from 'react-icons/fi';
+import AdminPayments from './AdminPayments.jsx';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getAccounts, updateAccount } from '../../services/adminService.js';
@@ -51,13 +52,14 @@ export default function AdminPage() {
       <div className="admin-brand"><span className="admin-brand-mark">A</span><div><strong>AMS</strong><small>ADMIN CONSOLE</small></div></div>
       <div className="admin-sidebar-caption">QUẢN LÝ HỆ THỐNG</div>
       <button className={`admin-side-link ${section === 'accounts' ? 'active' : ''}`} onClick={() => setSection('accounts')}><FiUsers /> Tài khoản</button>
-      <button className={`admin-side-link ${section === 'payments' ? 'active' : ''}`} onClick={() => setSection('payments')}>Đối soát thanh toán</button>
+      <button className={`admin-side-link ${section === 'payments' ? 'active' : ''}`} onClick={() => setSection('payments')}><FiDollarSign /> Doanh thu & Thanh toán</button>
+      <button className={`admin-side-link ${section === 'reviews' ? 'active' : ''}`} onClick={() => setSection('reviews')}><FiFileText /> Đối soát lỗi SePay</button>
       <div className="admin-sidebar-bottom"><div className="admin-side-user"><span>{user?.fullName?.[0]?.toUpperCase() || 'A'}</span><div><strong>{user?.fullName || 'Admin'}</strong><small>Quản trị viên</small></div></div><button onClick={signOut}><FiLogOut /> Đăng xuất</button></div>
     </aside>
     <main className="admin-main">
-      <header className="admin-topbar"><span>Quản trị / {section === 'accounts' ? 'Tài khoản' : 'Đối soát thanh toán'}</span><span className="admin-top-user">{user?.email}</span></header>
+      <header className="admin-topbar"><span>Quản trị / {section === 'accounts' ? 'Tài khoản' : section === 'payments' ? 'Doanh thu & Thanh toán' : 'Đối soát lỗi SePay'}</span><span className="admin-top-user">{user?.email}</span></header>
       <div className="admin-content">
-        {section === 'payments' ? <PaymentReviews /> : <>
+        {section === 'payments' ? <AdminPayments /> : section === 'reviews' ? <PaymentReviews /> : <>
         <div className="admin-heading"><div><p className="admin-kicker">KHÔNG GIAN QUẢN TRỊ</p><h1>Quản lý tài khoản</h1><p>Theo dõi thành viên, phân quyền và trạng thái truy cập.</p></div><button className="admin-refresh" onClick={refresh} aria-label="Tải lại danh sách"><FiRefreshCw /> Tải lại</button></div>
         <div className="admin-stats"><div><span>Tổng tài khoản</span><strong>{data?.totalElements ?? '—'}</strong><small>Theo bộ lọc hiện tại</small></div><div><span>Đang hiển thị</span><strong>{accounts.length}</strong><small>Trang {page + 1}</small></div><div><span>Đã xác thực</span><strong>{accounts.filter((item) => item.verified).length}</strong><small>Trên trang hiện tại</small></div></div>
         <section className="admin-panel"><div className="admin-panel-head"><div><h2>Danh sách tài khoản</h2><p>Chọn vai trò hoặc khóa quyền truy cập trực tiếp trong bảng.</p></div></div>
