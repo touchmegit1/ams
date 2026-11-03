@@ -35,6 +35,11 @@ public class TeacherSubmissionController {
         return submissions.grade(assignmentId, submissionId, body.score(), body.feedback(), auth);
     }
 
+    @PostMapping("/assignments/{assignmentId}/submissions/{submissionId}/ai-evaluate")
+    public Map<String, Object> evaluateWithAi(@PathVariable Integer assignmentId, @PathVariable Integer submissionId, Authentication auth) {
+        return submissions.evaluateWithAi(assignmentId, submissionId, auth);
+    }
+
     @GetMapping("/submissions/{submissionId}/file")
     public ResponseEntity<FileSystemResource> submissionFile(@PathVariable Integer submissionId, Authentication auth) {
         var file = submissions.download(submissionId, auth);

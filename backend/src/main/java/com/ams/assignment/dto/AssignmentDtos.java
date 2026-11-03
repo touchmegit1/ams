@@ -27,7 +27,17 @@ public final class AssignmentDtos {
                         @Pattern(regexp="DOCUMENT|QUIZ") String assignmentType,
                         @Size(max=100) List<@NotNull @Valid Question> questions) {}
     public record Generate(@NotNull Integer subjectId, @NotBlank @Size(max=4000) String topic,
-                           @NotBlank @Pattern(regexp="Easy|Medium|Hard") String difficulty) {}
+                           @NotBlank @Pattern(regexp="Easy|Medium|Hard") String difficulty,
+                           String assignmentType) {
+        public Generate(Integer subjectId, String topic, String difficulty) {
+            this(subjectId, topic, difficulty, "DOCUMENT");
+        }
+    }
     public record Draft(@NotBlank @Size(max=200) String title, @NotBlank @Size(max=8000) String description,
-                        @NotEmpty @Size(max=30) List<@NotNull @Valid Criterion> rubric, String model) {}
+                        List<@NotNull @Valid Criterion> rubric, String model,
+                        List<@NotNull @Valid Question> questions) {
+        public Draft(String title, String description, List<Criterion> rubric, String model) {
+            this(title, description, rubric, model, List.of());
+        }
+    }
 }

@@ -10,7 +10,7 @@ import java.util.Map;
 @RestController @RequestMapping("/api/assignments") @RequiredArgsConstructor
 public class AssignmentController {
     private final AssignmentService service;
-    @GetMapping public Map<String,Object> list(@RequestParam(required=false) String keyword,@RequestParam(required=false) Integer subjectId,@RequestParam(required=false) Source source,@RequestParam(required=false) Status status,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size,Authentication auth) { return service.list(keyword,subjectId,source,status,page,size,auth); }
+    @GetMapping public Map<String,Object> list(@RequestParam(required=false) String keyword,@RequestParam(required=false) Integer subjectId,@RequestParam(required=false) Source source,@RequestParam(required=false) Status status,@RequestParam(required=false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dueDate,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size,Authentication auth) { return service.list(keyword,subjectId,source,status,dueDate,page,size,auth); }
     @GetMapping("/{id}") public Map<String,Object> detail(@PathVariable Integer id,Authentication auth) { return service.detail(id,auth); }
     @PostMapping @ResponseStatus(org.springframework.http.HttpStatus.CREATED) public Map<String,Object> create(@Valid @RequestBody Write body,Authentication auth) { return service.save(null,body,auth); }
     @PutMapping("/{id}") public Map<String,Object> edit(@PathVariable Integer id,@Valid @RequestBody Write body,Authentication auth) { return service.save(id,body,auth); }

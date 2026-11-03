@@ -95,7 +95,7 @@ CREATE TABLE assignments (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     assignment_type VARCHAR(20) NOT NULL DEFAULT 'DOCUMENT',
     questions_json LONGTEXT,
-    submission_version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT fk_assignments_course FOREIGN KEY (course_id) REFERENCES courses(course_id),
     CONSTRAINT fk_assignments_template FOREIGN KEY (template_id) REFERENCES assignment_templates(template_id),
     CONSTRAINT fk_assignments_creator FOREIGN KEY (created_by) REFERENCES users(user_id),
@@ -122,7 +122,7 @@ CREATE TABLE submissions (
     reviewed_at TIMESTAMP NULL,
     status ENUM('SUBMITTED','AI_EVALUATED','TEACHER_REVIEWED') DEFAULT 'SUBMITTED',
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    submission_version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT fk_submissions_assignment FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id) ON DELETE CASCADE,
     CONSTRAINT fk_submissions_student FOREIGN KEY (student_id) REFERENCES users(user_id)
 );
@@ -200,7 +200,7 @@ INSERT INTO assignment_templates (name, course_id, description, default_max_scor
 ('Bài thực hành REST API', NULL, 'Thiết kế REST API và viết tài liệu endpoint.', 10.00,
  '[{"criteria":"Chức năng","description":"API đáp ứng yêu cầu","weight":70},{"criteria":"Kiểm thử","description":"Có kiểm thử các luồng chính","weight":30}]', 1);
 
-INSERT INTO assignments (course_id, title, description, grading_rubric, max_score, due_date, status, source, created_by, assignment_type) VALUES
+INSERT INTO assignments (course_id, title, description, grading_rubric, max_score, due_date, status, source, created_by, assignment_type, allowed_file_types) VALUES
 (1, 'Thiết kế API đầu tiên', 'Tạo các endpoint GET và POST cho một tài nguyên.',
  '[{"criteria":"Chức năng","description":"Endpoint hoạt động","weight":100}]', 10.00,
- TIMESTAMPADD(DAY, 14, CURRENT_TIMESTAMP), 'PUBLISHED', 'MANUAL', 2, 'DOCUMENT');
+ TIMESTAMPADD(DAY, 14, CURRENT_TIMESTAMP), 'PUBLISHED', 'MANUAL', 2, 'DOCUMENT', 'PDF,DOC,DOCX,ZIP,TXT');

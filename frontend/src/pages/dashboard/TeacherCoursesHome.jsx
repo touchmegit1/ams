@@ -20,6 +20,12 @@ export default function TeacherCoursesHome() {
     pendingCount: total.pendingCount + (Number(course.pendingReviewCount) || 0),
   }), { courseCount: 0, studentCount: 0, pendingCount: 0 }), [courses]);
   const { reviewCourses, recentCourses } = useMemo(() => selectTeacherDashboardCourses(courses), [courses]);
+  const firstPendingCourse = courses.find((c) => (Number(c.pendingReviewCount) || 0) > 0);
+  const firstPendingUrl = firstPendingCourse
+    ? (firstPendingCourse.firstPendingAssignmentId
+        ? `/teacher/assignments/${firstPendingCourse.firstPendingAssignmentId}?subjectId=${firstPendingCourse.courseId}`
+        : `/courses/${firstPendingCourse.courseId}?tab=assignments`)
+    : null;
 
   const load = () => {
     setLoading(true);
@@ -47,7 +53,14 @@ export default function TeacherCoursesHome() {
       <section className="teacher-dashboard-stats" aria-label="Tổng quan giảng dạy">
         <div><FiBookOpen aria-hidden="true" /><span><strong>{loading ? '—' : summary.courseCount}</strong><small>Khóa học</small></span></div>
         <div><FiUsers aria-hidden="true" /><span><strong>{loading ? '—' : summary.studentCount}</strong><small>Sinh viên đang học</small></span></div>
-        <div className={summary.pendingCount ? 'has-pending' : ''}><FiClipboard aria-hidden="true" /><span><strong>{loading ? '—' : summary.pendingCount}</strong><small>Bài cần chấm</small></span></div>
+        {summary.pendingCount > 0 && firstPendingUrl ? (
+          <Link to={firstPendingUrl} className="teacher-dashboard-stat-link has-pending" title="Bấm để vào chấm bài ngay">
+            <FiClipboard aria-hidden="true" />
+            <span><strong>{loading ? '—' : summary.pendingCount}</strong><small>Bài cần chấm · Chấm ngay →</small></span>
+          </Link>
+        ) : (
+          <div className={summary.pendingCount ? 'has-pending' : ''}><FiClipboard aria-hidden="true" /><span><strong>{loading ? '—' : summary.pendingCount}</strong><small>Bài cần chấm</small></span></div>
+        )}
       </section>
 
       {loading ? <p className="teacher-dashboard-loading" role="status">Đang tải công việc giảng dạy…</p> : !courses.length ? (
@@ -64,12 +77,19 @@ export default function TeacherCoursesHome() {
             <span>{summary.pendingCount} bài</span>
           </div>
           {!reviewCourses.length ? <div className="teacher-dashboard-quiet-empty"><span className="teacher-dashboard-done" aria-hidden="true">✓</span><div><strong>Không có bài cần chấm</strong><p>Bài nộp mới sẽ xuất hiện tại đây.</p></div></div> : <div className="teacher-dashboard-task-list">
-            {reviewCourses.map((course) => <Link className="teacher-dashboard-task" to={`/courses/${course.courseId}?tab=assignments`} key={course.courseId}>
-              <span className="teacher-dashboard-task-icon"><FiClipboard aria-hidden="true" /></span>
-              <span className="teacher-dashboard-task-copy"><small>{course.courseCode || 'Khóa học'}</small><strong>{course.title}</strong></span>
-              <span className="teacher-dashboard-pending-count">{course.pendingReviewCount} bài chờ chấm</span>
-              <FiArrowRight className="teacher-dashboard-task-arrow" aria-hidden="true" />
-            </Link>)}
+            {reviewCourses.map((course) => {
+              const targetUrl = course.firstPendingAssignmentId
+                ? `/teacher/assignments/${course.firstPendingAssignmentId}?subjectId=${course.courseId}`
+                : `/courses/${course.courseId}?tab=assignments`;
+              return (
+                <Link className="teacher-dashboard-task" to={targetUrl} key={course.courseId}>
+                  <span className="teacher-dashboard-task-icon"><FiClipboard aria-hidden="true" /></span>
+                  <span className="teacher-dashboard-task-copy"><small>{course.courseCode || 'Khóa học'}</small><strong>{course.title}</strong></span>
+                  <span className="teacher-dashboard-pending-count">{course.pendingReviewCount} bài chờ chấm</span>
+                  <span className="teacher-dashboard-task-action">Vào chấm ngay <FiArrowRight aria-hidden="true" /></span>
+                </Link>
+              );
+            })}
           </div>}
         </section>
 

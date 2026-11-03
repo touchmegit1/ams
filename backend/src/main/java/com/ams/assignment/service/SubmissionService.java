@@ -28,6 +28,10 @@ import java.util.*;
 public class SubmissionService {
     private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
     private static final int MAX_TEXT_LENGTH = 100_000;
+    public static final List<String> DEFAULT_ALLOWED_FILE_TYPES = List.of(
+        "PDF", "DOC", "DOCX", "ZIP", "TXT", "PPTX", "XLSX", "PNG", "JPG",
+        "JSON", "JAVA", "PY", "JS", "TS", "HTML", "CSS", "MD", "SQL"
+    );
     private final AssignmentRepository assignments;
     private final SubmissionRepository submissions;
     private final EnrollmentRepository enrollments;
@@ -126,7 +130,53 @@ public class SubmissionService {
     public List<Map<String, Object>> teacherSubmissions(Integer assignmentId, org.springframework.security.core.Authentication auth) {
         Assignment assignment = requireAssignment(assignmentId);
         requireTeacherCourse(assignment.getSubjectId(), auth);
-        return submissions.findAllByAssignment_IdOrderBySubmittedAtAsc(assignmentId).stream().map(this::teacherView).toList();
+        List<Submission> subList = submissions.findAllByAssignment_IdOrderBySubmittedAtAsc(assignmentId);
+        Map<Integer, Submission> map = new LinkedHashMap<>();
+        for (Submission s : subList) {
+            map.put(s.getStudent().getUserId(), s);
+        }
+
+        List<com.ams.enrollment.entity.Enrollment> roster = enrollments.findAllByCourse_CourseIdOrderByCreatedAtAsc(assignment.getSubjectId());
+        List<Map<String, Object>> result = new ArrayList<>();
+        Set<Integer> processed = new HashSet<>();
+
+        for (com.ams.enrollment.entity.Enrollment e : roster) {
+            if (e.getStatus() != com.ams.enrollment.entity.EnrollmentStatus.ACTIVE) continue;
+            var student = e.getStudent();
+            processed.add(student.getUserId());
+            Submission s = map.get(student.getUserId());
+            if (s != null) {
+                result.add(teacherView(s));
+            } else {
+                Map<String, Object> unsubmitted = new LinkedHashMap<>();
+                unsubmitted.put("submissionId", -student.getUserId());
+                unsubmitted.put("studentId", student.getUserId());
+                unsubmitted.put("studentName", student.getFullName());
+                unsubmitted.put("studentEmail", student.getEmail());
+                unsubmitted.put("status", "NOT_SUBMITTED");
+                unsubmitted.put("submissionText", null);
+                unsubmitted.put("fileName", null);
+                unsubmitted.put("downloadUrl", null);
+                unsubmitted.put("submittedAt", null);
+                unsubmitted.put("teacherScore", null);
+                unsubmitted.put("teacherFeedback", null);
+                unsubmitted.put("reviewedAt", null);
+                unsubmitted.put("aiScore", null);
+                unsubmitted.put("aiFeedback", null);
+                unsubmitted.put("aiEvaluationStatus", null);
+                unsubmitted.put("autoScore", null);
+                unsubmitted.put("autoFeedback", null);
+                result.add(unsubmitted);
+            }
+        }
+
+        for (Submission s : subList) {
+            if (!processed.contains(s.getStudent().getUserId())) {
+                result.add(teacherView(s));
+                processed.add(s.getStudent().getUserId());
+            }
+        }
+        return result;
     }
 
     @Transactional
@@ -134,8 +184,26 @@ public class SubmissionService {
                                      org.springframework.security.core.Authentication auth) {
         Assignment assignment = requireAssignment(assignmentId);
         requireTeacherCourse(assignment.getSubjectId(), auth);
-        Submission submission = submissions.findById(submissionId).filter(s -> s.getAssignment().getId().equals(assignmentId))
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bài nộp"));
+        Submission submission;
+        if (submissionId != null && submissionId > 0) {
+            submission = submissions.findById(submissionId).filter(s -> s.getAssignment().getId().equals(assignmentId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bài nộp"));
+        } else if (submissionId != null && submissionId < 0) {
+            int studentId = -submissionId;
+            submission = submissions.findTopByAssignment_IdAndStudent_UserIdOrderBySubmittedAtDescSubmissionIdDesc(assignmentId, studentId)
+                .orElseGet(() -> {
+                    Submission created = new Submission();
+                    created.setAssignment(assignment);
+                    created.setStudent(users.findById(studentId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên")));
+                    created.setSubmissionText("");
+                    created.setSubmittedAt(Instant.now());
+                    created.setStatus(Submission.Status.SUBMITTED);
+                    return created;
+                });
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID bài nộp không hợp lệ");
+        }
         if (score == null || score.signum() < 0 || score.compareTo(assignment.getMaxScore()) > 0)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Điểm phải nằm trong khoảng 0 đến điểm tối đa");
         if (feedback != null && feedback.length() > 8000)
@@ -143,6 +211,16 @@ public class SubmissionService {
         submission.setTeacherScore(score); submission.setTeacherFeedback(feedback == null ? "" : feedback.trim());
         submission.setStatus(Submission.Status.TEACHER_REVIEWED); submission.setReviewedAt(Instant.now());
         return teacherView(submissions.save(submission));
+    }
+
+    @Transactional
+    public Map<String, Object> evaluateWithAi(Integer assignmentId, Integer submissionId, org.springframework.security.core.Authentication auth) {
+        Assignment assignment = requireAssignment(assignmentId);
+        requireTeacherCourse(assignment.getSubjectId(), auth);
+        Submission submission = submissions.findById(submissionId).filter(s -> s.getAssignment().getId().equals(assignmentId))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bài nộp"));
+        Submission evaluated = aiEvaluator.evaluateDirect(submission.getSubmissionId());
+        return teacherView(evaluated);
     }
 
     @Transactional(readOnly = true)
@@ -204,10 +282,11 @@ public class SubmissionService {
         if (file.getSize() > MAX_FILE_SIZE) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Tệp không được vượt quá 20 MB");
         String original = safeFilename(file.getOriginalFilename());
         int dot = original.lastIndexOf('.');
-        String extension = dot < 0 ? "" : original.substring(dot + 1).toUpperCase(Locale.ROOT);
-        List<String> allowed = assignment.getAllowedFileTypes() == null || assignment.getAllowedFileTypes().isBlank()
-            ? List.of() : Arrays.stream(assignment.getAllowedFileTypes().split(",")).map(String::trim).map(s -> s.toUpperCase(Locale.ROOT)).toList();
-        if (extension.isBlank() || !allowed.contains(extension)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Định dạng tệp không được phép");
+        String extension = dot < 0 ? "" : original.substring(dot + 1).trim().toUpperCase(Locale.ROOT);
+        List<String> allowed = (assignment.getAllowedFileTypes() == null || assignment.getAllowedFileTypes().isBlank())
+            ? DEFAULT_ALLOWED_FILE_TYPES : Arrays.stream(assignment.getAllowedFileTypes().split(",")).map(String::trim).filter(s -> !s.isBlank()).map(s -> s.toUpperCase(Locale.ROOT)).toList();
+        if (allowed.isEmpty()) allowed = DEFAULT_ALLOWED_FILE_TYPES;
+        if (extension.isBlank() || !allowed.contains(extension)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Định dạng tệp không được phép. Các định dạng được chấp nhận: " + String.join(", ", allowed));
     }
 
     private String safeFilename(String name) {

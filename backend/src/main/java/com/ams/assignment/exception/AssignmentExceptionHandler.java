@@ -5,6 +5,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 
 @RestControllerAdvice(basePackages="com.ams.assignment")
@@ -14,6 +15,9 @@ public class AssignmentExceptionHandler {
     }
     @ExceptionHandler(AssignmentException.class) ResponseEntity<?> business(AssignmentException e) {
         return response(e.getStatus(),e.getMessage(),e.getField()==null ? List.of() : List.of(Map.of("field",e.getField(),"message",e.getMessage())));
+    }
+    @ExceptionHandler(ResponseStatusException.class) ResponseEntity<?> status(ResponseStatusException e) {
+        return response(e.getStatusCode().value(), Objects.toString(e.getReason(), "Không thể xử lý yêu cầu."), List.of());
     }
     @ExceptionHandler(MethodArgumentNotValidException.class) ResponseEntity<?> validation(MethodArgumentNotValidException e) {
         return response(400,"Dữ liệu chưa hợp lệ",e.getBindingResult().getFieldErrors().stream().map(f -> Map.of("field",f.getField(),"message",Objects.toString(f.getDefaultMessage(),"Không hợp lệ"))).toList());

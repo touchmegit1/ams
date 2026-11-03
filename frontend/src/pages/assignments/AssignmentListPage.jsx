@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { assignmentService, templateService } from '../../services/assignmentService.js';
 import { PageHeading, StatusTag, Notice, ConfirmDialog, Pagination, statuses, sources, dateText, errorText } from '../../components/assignments/AssignmentUI.jsx';
 
-const blank = { keyword: '', subjectId: '', source: '', status: '' };
+const blank = { keyword: '', subjectId: '', source: '', status: '', dueDate: '' };
 export default function AssignmentListPage({ templates = false }) {
   const [filters, setFilters] = useState(blank), [search, setSearch] = useState(blank);
   const [subjects, setSubjects] = useState([]), [data, setData] = useState({ content: [] }), [page, setPage] = useState(0);
@@ -30,7 +30,7 @@ export default function AssignmentListPage({ templates = false }) {
     <form className="assignment-filters" onSubmit={(e) => { e.preventDefault(); setPage(0); setSearch({ ...filters }); }}>
       <input aria-label="Tìm theo tên" name="keyword" placeholder={templates ? 'Tìm mẫu bài tập…' : 'Tìm tên bài tập…'} value={filters.keyword} onChange={change} />
       <select aria-label="Môn học" name="subjectId" value={filters.subjectId} onChange={change}><option value="">Tất cả môn học</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-      {!templates && <><select aria-label="Nguồn tạo" name="source" value={filters.source} onChange={change}><option value="">Tất cả nguồn</option>{Object.entries(sources).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select><select aria-label="Trạng thái" name="status" value={filters.status} onChange={change}><option value="">Trạng thái hiện tại</option>{Object.entries(statuses).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></>}
+      {!templates && <><select aria-label="Nguồn tạo" name="source" value={filters.source} onChange={change}><option value="">Tất cả nguồn</option>{Object.entries(sources).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select><select aria-label="Trạng thái" name="status" value={filters.status} onChange={change}><option value="">Tất cả trạng thái</option>{Object.entries(statuses).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select><input type="date" aria-label="Hạn nộp" name="dueDate" title="Lọc theo ngày hạn nộp" value={filters.dueDate} onChange={change} /></>}
       <button className="primary">Tìm kiếm</button><button type="button" onClick={() => { setFilters(blank); setSearch({ ...blank }); setPage(0); }}>Đặt lại</button>
     </form>
     <Notice error>{error}</Notice>

@@ -1,4 +1,4 @@
-﻿const SESSION_KEY = 'ams.session';
+const SESSION_KEY = 'ams.session';
 let accessToken = null;
 
 // Thời gian còn lại tối thiểu của token để coi là "còn dùng được"
@@ -55,7 +55,9 @@ export const saveSession = (token, user) => {
   accessToken = token;
   try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ accessToken: token, user })); }
   catch { /* Keep the current tab signed in when storage is unavailable. */ }
-  window.dispatchEvent(new CustomEvent('ams:session-updated', { detail: { token, user } }));
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('ams:session-updated', { detail: { token, user } }));
+  }
 };
 
 export const updateSessionUser = (user) => {
@@ -67,5 +69,7 @@ export const clearSession = () => {
   try { sessionStorage.removeItem(SESSION_KEY); } catch { /* Storage may be disabled. */ }
   localStorage.removeItem('accessToken');
   localStorage.removeItem('user');
-  window.dispatchEvent(new Event('ams:session-ended'));
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new Event('ams:session-ended'));
+  }
 };

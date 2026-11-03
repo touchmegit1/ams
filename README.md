@@ -24,7 +24,7 @@ cd backend
 
 Trên Windows có thể dùng `mvnw.cmd spring-boot:run`. Có thể chạy kiểm thử bằng `./mvnw test` (Windows: `mvnw.cmd test`).
 
-Để dùng MySQL, sao chép `backend/.env.example` thành `backend/.env`, điền thông tin kết nối và đặt `SPRING_PROFILE=prod`. File `.env` không được đưa lên Git. Backend đọc các biến kết nối `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; cổng mặc định là `8080` (`SERVER_PORT`). Google OAuth và gửi OTP qua Gmail cần các biến `GOOGLE_CLIENT_ID`, `MAIL_USERNAME`, `MAIL_PASSWORD` tương ứng.
+Để dùng MySQL, sao chép `backend/.env.example` thành `backend/.env`, điền thông tin kết nối và đặt `SPRING_PROFILE=prod`. File `.env` không được đưa lên Git. Backend đọc file này khi chạy từ thư mục `backend` hoặc thư mục gốc repository. Backend đọc các biến kết nối `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; cổng mặc định là `8080` (`SERVER_PORT`). Google OAuth và gửi OTP qua Gmail cần các biến `GOOGLE_CLIENT_ID`, `MAIL_USERNAME`, `MAIL_PASSWORD` tương ứng.
 
 Tệp sinh viên nộp được lưu riêng trên máy backend. Đặt `AMS_UPLOAD_DIR` thành thư mục bền vững mà backend có quyền ghi; mặc định dùng thư mục tạm của hệ điều hành và có thể bị xóa khi triển khai lại. Khi nâng cấp database hiện có, chạy migration mới nhất trong `backend/src/main/resources/sql/` một lần trước khi khởi động ứng dụng.
 

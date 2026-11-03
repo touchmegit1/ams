@@ -437,6 +437,16 @@
 .cm-payment-tools .cm-button svg { width:14px; height:14px; }
 .cm-payment-filter-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 17px 12px; color:#758198; font-size:10px; }
 .cm-payment-filter-row select { min-height:33px; padding:5px 9px; border:1px solid #e0e7f0; border-radius:7px; color:#46566f; background:#fff; font:inherit; font-size:10px; }
+.cm-assignment-filter-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1px solid #edf0f6; background:#fcfdfe; }
+.cm-assignment-filter-toolbar .cm-workspace-search { margin:0; flex:1 1 240px; max-width:360px; }
+.cm-assignment-filters-group { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.cm-filter-item { display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:700; color:#5c6b82; }
+.cm-filter-label { white-space:nowrap; }
+.cm-filter-item select, .cm-filter-item input[type="date"] { min-height:35px; padding:4px 9px; border:1px solid #e0e7f0; border-radius:7px; background:#fff; color:#263750; font:inherit; font-size:11px; }
+.cm-filter-item select:focus, .cm-filter-item input[type="date"]:focus { border-color:#8fae9a; outline:0; box-shadow:0 0 0 3px #315b4915; }
+.cm-reset-btn { min-height:35px; padding:0 12px; background:#f1f4f8; border:1px solid #d3dce8; border-radius:7px; color:#4a5970; font-size:10px; font-weight:600; cursor:pointer; }
+.cm-reset-btn:hover { background:#e2e9f3; color:#1e2d42; }
+@media(max-width:750px) { .cm-assignment-filter-toolbar { flex-direction:column; align-items:stretch; } .cm-assignment-filter-toolbar .cm-workspace-search { max-width:100%; } .cm-assignment-filters-group { width:100%; justify-content:space-between; } }
 .cm-payment-pagination { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 17px; border-top:1px solid #edf0f6; color:#78879d; font-size:10px; }
 .cm-payment-pagination > div { display:flex; align-items:center; gap:8px; }
 .cm-payment-pagination .cm-button { min-height:28px; font-size:9px; }
@@ -454,3 +464,7 @@
 .cm-lesson-preview-content > a { display:inline-flex; align-items:center; gap:7px; justify-self:start; padding:10px 12px; border:1px solid #dce6df; border-radius:8px; color:#315b49; background:#f5f9f6; font-size:12px; font-weight:700; text-decoration:none; }
 .cm-lesson-preview-content > a svg { width:14px; height:14px; }
 .cm-lesson-preview-content > a:hover { border-color:#9db9a6; background:#edf4ee; }
+
+.cm-work-status.status-pending-review { background: #fff3d8; color: #8a5a0e; font-weight: 700; border: 1px solid #fed7aa; }
+.cm-work-status.status-reviewed { background: #e3f5eb; color: #1e5e39; font-weight: 600; }
+.cm-work-status.status-no-submission { background: #f3f4f6; color: #6b7280; }

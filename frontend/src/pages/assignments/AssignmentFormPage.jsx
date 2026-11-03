@@ -3,6 +3,7 @@ import { Navigate, useLocation, useParams, useSearchParams } from 'react-router-
 import { SmoothLink as Link, useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
 import { toast } from 'react-toastify';
 import { assignmentService, templateService } from '../../services/assignmentService.js';
+import { FiArrowLeft } from 'react-icons/fi';
 import { PageHeading, Field, Notice, ConfirmDialog, errorText } from '../../components/assignments/AssignmentUI.jsx';
 
 import QuestionEditor from '../../components/assignments/QuestionEditor.jsx';
@@ -29,7 +30,8 @@ export default function AssignmentFormPage({ review = false }) {
   const [action, setAction] = useState(null);
   const templateSequence = useRef(0);
   const editId = id;
-  const returnToCourse = query.get('subjectId') ? `/courses/${query.get('subjectId')}?tab=assignments` : '/courses';
+  const courseSubjectId = query.get('subjectId') || form.subjectId;
+  const returnToCourse = courseSubjectId ? `/courses/${courseSubjectId}?tab=assignments` : '/teacher/assignments';
   useEffect(() => {
     let active = true;
     async function load() {
@@ -71,21 +73,67 @@ export default function AssignmentFormPage({ review = false }) {
     finally { setSaving(false); }
   };
   const generate = async () => {
-    if (!form.subjectId || !topic.trim()) { setError('Chọn môn học và nhập chủ đề trước khi tạo đề AI'); return; }
-    setGenerating(true); setError('');
-    const request = { subjectId: Number(form.subjectId), topic, difficulty };
+    if (!form.subjectId) {
+      setError('Vui lòng chọn môn học ở mục Thông tin bài tập trước khi tạo đề AI');
+      return;
+    }
+    if (!topic.trim()) {
+      setError('Vui lòng nhập chủ đề / yêu cầu để AI tạo đề');
+      return;
+    }
+    setGenerating(true);
+    setError('');
+    const request = {
+      subjectId: Number(form.subjectId),
+      topic: topic.trim(),
+      difficulty,
+      assignmentType: form.assignmentType || 'DOCUMENT',
+    };
     try {
       const draft = await assignmentService.generate(request);
-      const nextForm = { ...form, title: draft.title, description: draft.description, rubric: [], source: 'AI', templateId: '', aiPrompt: JSON.stringify(request) };
-      if (review) { setForm(nextForm); setDirty(true); navigate(`/teacher/assignments/ai-review?subjectId=${form.subjectId}`, { replace: true, state: { ...location.state, form: nextForm, request, model: draft.model } }); }
-      else navigate(`/teacher/assignments/ai-review?subjectId=${form.subjectId}`, { state: { form: nextForm, originalForm: form, request, model: draft.model, returnEditId: editId } });
-    } catch (e) { setError(errorText(e)); } finally { setGenerating(false); }
+      setForm((current) => ({
+        ...current,
+        title: draft.title || current.title,
+        description: draft.description || current.description,
+        questions: (current.assignmentType === 'QUIZ' && Array.isArray(draft.questions) && draft.questions.length > 0)
+          ? draft.questions
+          : current.questions,
+        source: 'AI',
+        templateId: '',
+        aiPrompt: JSON.stringify(request),
+      }));
+      setDirty(true);
+      setErrors((e) => ({ ...e, title: undefined, description: undefined, questions: undefined }));
+      toast.success('Đã tạo đề bài bằng AI và tự động điền vào thông tin bài tập!');
+      if (review) {
+        navigate(`/teacher/assignments/ai-review?subjectId=${form.subjectId}`, {
+          replace: true,
+          state: { ...location.state, request, model: draft.model },
+        });
+      }
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setGenerating(false);
+    }
   };
   if (review && !resume) return <Navigate to={`/teacher/assignments/new${query.get('subjectId') ? `?subjectId=${query.get('subjectId')}` : ''}`} replace />;
   if (loading || loadError) return <><Link to={returnToCourse}>← Quay lại khóa học</Link><Notice error={Boolean(loadError)}>{loadError || 'Đang tải biểu mẫu…'}</Notice></>;
   const disabled = saving || generating || templateLoading;
   return <>
-    <PageHeading title={review ? 'Xem lại đề bài AI' : editId ? 'Chỉnh sửa bài tập' : 'Tạo bài tập mới'} />
+    <Link className="assignment-back" to={returnToCourse}>
+      <FiArrowLeft aria-hidden="true" /> {courseSubjectId ? 'Quay lại bài tập của khóa học' : 'Quay lại danh sách bài tập'}
+    </Link>
+    <PageHeading title={review ? 'Xem lại đề bài AI' : editId ? 'Chỉnh sửa bài tập' : 'Tạo bài tập mới'}>
+      <Link className="button" to={returnToCourse}>
+        <FiArrowLeft aria-hidden="true" /> {courseSubjectId ? 'Bài tập của lớp' : 'Danh sách bài tập'}
+      </Link>
+      {courseSubjectId && (
+        <Link className="button" to="/teacher/assignments">
+          Tất cả bài tập
+        </Link>
+      )}
+    </PageHeading>
     {review && <Notice>Nội dung do AI tạo, chưa được lưu. Hãy kiểm tra đề bài trước khi lưu.</Notice>}
     {!subjects.length && <Notice>Chưa có khóa học được phân công. Cần có khóa học thuộc tài khoản giảng viên này để giao bài.</Notice>}
     <Notice error>{error}</Notice>
@@ -102,14 +150,18 @@ export default function AssignmentFormPage({ review = false }) {
       <div className="assignment-form-grid"><Field name="dueDate" label="Hạn nộp *" errors={errors}><input id="dueDate" type="datetime-local" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} /></Field><Field name="maxScore" label="Điểm tối đa *" errors={errors}><input id="maxScore" type="number" min="0.01" max="999.99" step="0.01" value={form.maxScore} onChange={(e) => update('maxScore', e.target.value)} /></Field></div>
       {form.assignmentType !== 'QUIZ' && <div className="assignment-field"><span>Định dạng được phép nộp</span><div className="assignment-file-types">{['PDF', 'DOC', 'DOCX', 'ZIP', 'TXT', 'PPTX', 'XLSX', 'PNG', 'JPG'].map((type) => <label key={type}><input type="checkbox" checked={form.allowedFileTypes.includes(type)} onChange={(e) => update('allowedFileTypes', e.target.checked ? [...form.allowedFileTypes, type] : form.allowedFileTypes.filter((v) => v !== type))} />{type}</label>)}</div><Notice error>{errors.allowedFileTypes}</Notice></div>}
       {form.assignmentType === 'QUIZ' && <><QuestionEditor value={form.questions || []} onChange={(value) => update('questions', value)} /><Notice error>{errors.questions || Object.entries(errors).filter(([k]) => k.startsWith('questions[')).map(([, v]) => v).join('; ')}</Notice></>}
-      <div className="assignment-actions assignment-footer-actions"><button type="submit" className="primary" disabled={!subjects.length}>{saving ? 'Đang lưu…' : editId ? 'Lưu thay đổi' : 'Lưu bản nháp'}</button><button type="button" onClick={() => dirty ? setAction({ type: 'cancel', message: 'Bạn có thay đổi chưa lưu. Rời khỏi biểu mẫu?' }) : navigate(returnToCourse)}>{review ? 'Bỏ đề AI' : 'Hủy'}</button></div>
+      <div className="assignment-actions assignment-footer-actions"><button type="submit" className="primary" disabled={!subjects.length}>{saving ? 'Đang lưu…' : editId ? 'Lưu thay đổi' : 'Lưu bản nháp'}</button><button type="button" onClick={() => dirty ? setAction({ type: 'cancel', message: 'Bạn có thay đổi chưa lưu. Rời khỏi biểu mẫu?' }) : navigate(returnToCourse)}>{review ? 'Bỏ đề AI' : 'Hủy & Quay lại'}</button></div>
       </fieldset>
     </form><aside className="assignment-card assignment-ai"><p className="assignment-eyebrow">TRỢ LÝ SOẠN ĐỀ</p><h2>{review ? 'Yêu cầu tạo đề' : 'Bắt đầu cùng AI'}</h2><p>Nhập mục tiêu học tập để AI gợi ý tiêu đề và nội dung bài tập.</p>
       <Field name="topic" label="Chủ đề / yêu cầu"><textarea id="topic" rows={6} maxLength={4000} value={topic} readOnly={review} disabled={disabled} onChange={(e) => setTopic(e.target.value)} placeholder="Sinh viên thực hành thiết kế API, xác thực và kiểm thử…" /></Field>
       <Field name="difficulty" label="Độ khó"><select id="difficulty" value={difficulty} disabled={review || disabled} onChange={(e) => setDifficulty(e.target.value)}><option value="Easy">Cơ bản</option><option value="Medium">Trung bình</option><option value="Hard">Nâng cao</option></select></Field>
       {review && <p>Model: {location.state?.model}</p>}
-      <button className="primary" type="button" disabled={disabled || !subjects.length || form.assignmentType === 'QUIZ'} onClick={generate}>{generating ? 'Đang tạo đề…' : review ? 'Tạo lại đề AI' : 'Tạo đề bằng AI'}</button>
-      {form.assignmentType === 'QUIZ' && <small>Trợ lý AI hiện hỗ trợ đề tự luận. Soạn câu hỏi trắc nghiệm ở bên trái.</small>}
+      <button className="primary" type="button" disabled={disabled || !subjects.length} onClick={generate}>{generating ? 'Đang tạo đề bằng AI…' : review ? 'Tạo lại đề AI' : 'Tạo đề bằng AI'}</button>
+      {form.assignmentType === 'QUIZ' ? (
+        <small>AI sẽ tự động tạo tiêu đề, mô tả và các câu hỏi trắc nghiệm vào mục bên trái.</small>
+      ) : (
+        <small>Sau khi bấm tạo, AI sẽ tự động điền tiêu đề và nội dung vào mục Thông tin bài tập bên trái.</small>
+      )}
       <small>Đề AI chỉ được lưu khi bạn chọn lưu bản nháp.</small>
     </aside></div>
     <ConfirmDialog action={action} onCancel={() => setAction(null)} onConfirm={() => { setDirty(false); if (review) navigate(location.state.returnEditId ? `/teacher/assignments/${location.state.returnEditId}/edit?subjectId=${form.subjectId}` : `/teacher/assignments/new?subjectId=${form.subjectId}`, { state: { form: location.state.originalForm } }); else navigate(returnToCourse); }} />

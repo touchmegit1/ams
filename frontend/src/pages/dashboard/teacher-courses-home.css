@@ -50,3 +50,8 @@
 @media(max-width:760px) { .teacher-dashboard-home { padding-top:34px; } .teacher-dashboard-stats { gap:8px; } .teacher-dashboard-stats > div { gap:9px; padding:12px; } .teacher-dashboard-task,.teacher-dashboard-course { padding-right:13px; padding-left:13px; } }
 @media(max-width:560px) { .teacher-dashboard-heading { align-items:stretch; flex-direction:column; } .teacher-dashboard-heading .teacher-dashboard-create { align-self:flex-start; } .teacher-dashboard-stats { grid-template-columns:1fr; } .teacher-dashboard-stats > div { min-height:65px; } .teacher-dashboard-section-heading { align-items:flex-start; } .teacher-dashboard-task,.teacher-dashboard-course { gap:9px; } .teacher-dashboard-pending-count { max-width:92px; text-align:center; } .teacher-dashboard-status { display:none; } }
 @media(prefers-reduced-motion:reduce) { .teacher-dashboard-home * { scroll-behavior:auto !important; } }
+
+.teacher-dashboard-task-action { display:inline-flex; align-items:center; gap:5px; margin-left:8px; color:#21613d; font-size:11px; font-weight:700; white-space:nowrap; }
+.teacher-dashboard-task:hover .teacher-dashboard-task-action { color:#174c39; text-decoration:underline; }
+.teacher-dashboard-stat-link { text-decoration:none; color:inherit; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
+.teacher-dashboard-stat-link:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.06); }

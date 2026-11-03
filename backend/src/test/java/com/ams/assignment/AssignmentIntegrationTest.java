@@ -37,10 +37,11 @@ class AssignmentIntegrationTest {
     @Autowired AssignmentDeadlineJob job;
     @Autowired EnrollmentRepository enrollments;
     @Autowired com.ams.coursemgmt.repository.CourseRepository enrollmentCourses;
+    @Autowired com.ams.assignment.repository.SubmissionRepository submissions;
     String teacher,other,student,admin;
     Integer subjectId;
     @BeforeEach void setup() {
-        enrollments.deleteAll(); assignments.deleteAll(); templates.deleteAll(); courses.deleteAll(); users.deleteAll();
+        submissions.deleteAll(); enrollments.deleteAll(); assignments.deleteAll(); templates.deleteAll(); courses.deleteAll(); users.deleteAll();
         User t=account("teacher",User.Role.TEACHER);
         teacher=token(t); other=token(account("other",User.Role.TEACHER)); student=token(account("student",User.Role.STUDENT)); admin=token(account("admin",User.Role.ADMIN));
         Course c=new Course(); c.setTeacherId(t.getUserId()); c.setTitle("Lập trình Java"); subjectId=courses.save(c).getId();
@@ -156,6 +157,25 @@ class AssignmentIntegrationTest {
 
         mvc.perform(multipart("/api/student/assignments/{id}/submission", id)
                 .file(new MockMultipartFile("file", "work.pdf", "application/pdf", "assignment work".getBytes()))
+                .header("Authorization", student))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("status").value("SUBMITTED"));
+    }
+
+    @Test void studentCanSubmitWhenAllowedFileTypesIsNull() throws Exception {
+        int id = create(body());
+        Assignment a = assignments.findById(id).orElseThrow();
+        a.setAllowedFileTypes(null);
+        assignments.saveAndFlush(a);
+        mvc.perform(post("/api/assignments/{id}/publish", id).header("Authorization", teacher))
+            .andExpect(status().isOk());
+        User learner = users.findByEmail("student@test.local").orElseThrow();
+        Enrollment enrollment = new Enrollment(); enrollment.setStudent(learner);
+        enrollment.setCourse(enrollmentCourses.findById(subjectId).orElseThrow()); enrollment.setStatus(EnrollmentStatus.ACTIVE);
+        enrollments.save(enrollment);
+
+        mvc.perform(multipart("/api/student/assignments/{id}/submission", id)
+                .file(new MockMultipartFile("file", "solution.zip", "application/zip", "zip content".getBytes()))
                 .header("Authorization", student))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("status").value("SUBMITTED"));

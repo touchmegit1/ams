@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 import { clearSession, getAccessToken, saveSession, tokenNeedsRefresh } from './authSession.js';
 
 const api = axios.create({
@@ -51,11 +51,10 @@ const doRefresh = () => {
 api.interceptors.request.use(
   async (config) => {
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
-      // Xoa Content-Type de Axios/trinh duyet tu dong them multipart/form-data kem boundary hop le
-      if (config.headers.delete) {
-        config.headers.delete('Content-Type');
+      if (config.headers.set) {
+        config.headers.set('Content-Type', 'multipart/form-data');
       } else {
-        delete config.headers['Content-Type'];
+        config.headers['Content-Type'] = 'multipart/form-data';
       }
     }
 

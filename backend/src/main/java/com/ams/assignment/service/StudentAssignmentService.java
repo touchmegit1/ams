@@ -37,7 +37,7 @@ public class StudentAssignmentService {
             .stream().map(assignment -> {
                 Map<String, Object> view = safeView(assignment);
                 submissions.findTopByAssignment_IdAndStudent_UserIdOrderBySubmittedAtDescSubmissionIdDesc(assignment.getId(), studentId(auth)).ifPresent(s -> {
-                    view.put("submissionStatus", s.getStatus()); view.put("submittedAt", s.getSubmittedAt());
+                    view.put("submissionStatus", s.getStatus()); view.put("submittedAt", s.getSubmittedAt()); view.put("teacherScore", s.getTeacherScore()); view.put("submissionId", s.getSubmissionId());
                 });
                 return view;
             }).toList();
@@ -51,7 +51,14 @@ public class StudentAssignmentService {
         if (!enrollments.existsByStudent_UserIdAndCourse_CourseIdAndStatus(
                 studentId(auth), assignment.getSubjectId(), EnrollmentStatus.ACTIVE))
             throw new AssignmentException(403, "Bạn chưa có quyền học khóa này");
-        return safeView(assignment);
+        Map<String, Object> view = safeView(assignment);
+        submissions.findTopByAssignment_IdAndStudent_UserIdOrderBySubmittedAtDescSubmissionIdDesc(assignment.getId(), studentId(auth)).ifPresent(s -> {
+            view.put("submissionStatus", s.getStatus());
+            view.put("submittedAt", s.getSubmittedAt());
+            view.put("teacherScore", s.getTeacherScore());
+            view.put("submissionId", s.getSubmissionId());
+        });
+        return view;
     }
 
     private Map<String, Object> safeView(Assignment assignment) {

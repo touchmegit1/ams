@@ -11,6 +11,29 @@ const errorMessage = (error) => error.response?.data?.message || 'Đã xảy ra 
 const paymentStatusLabel = { PAID: 'Đã thanh toán', PENDING: 'Đang chờ', FREE: 'Miễn phí', EXPIRED: 'Hết hạn', NOT_COLLECTED: 'Chưa thu (chưa triển khai)' };
 const paymentDate = (value) => value ? new Date(value).toLocaleString('vi-VN') : '—';
 
+export const getAssignmentReviewStatus = (item) => {
+  if (item.status === 'DRAFT') {
+    return { key: 'DRAFT', label: 'Bản nháp', className: 'status-draft' };
+  }
+  if (item.status === 'CLOSED') {
+    return { key: 'CLOSED', label: 'Đã đóng', className: 'status-closed' };
+  }
+  if (item.status === 'ARCHIVED') {
+    return { key: 'ARCHIVED', label: 'Lưu trữ', className: 'status-archived' };
+  }
+  const pending = Number(item.pendingReviewCount) || 0;
+  const reviewed = Number(item.reviewedCount) || 0;
+  const totalSubs = Number(item.submissionCount) || 0;
+
+  if (pending > 0) {
+    return { key: 'PENDING_REVIEW', label: `Chờ chấm (${pending})`, className: 'status-pending-review' };
+  }
+  if (totalSubs > 0 && pending === 0) {
+    return { key: 'REVIEWED', label: `Đã chấm (${reviewed}/${totalSubs})`, className: 'status-reviewed' };
+  }
+  return { key: 'RECEIVING', label: 'Đang nhận bài', className: 'status-published' };
+};
+
 function exportPayments(rows, courseCode) {
   const quote = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
   const contents = [
@@ -83,6 +106,9 @@ function CourseCurriculumPage() {
   const [paymentSearch, setPaymentSearch] = useState('');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
   const [paymentPage, setPaymentPage] = useState(0);
+  const [assignmentSearch, setAssignmentSearch] = useState('');
+  const [assignmentStatusFilter, setAssignmentStatusFilter] = useState('ALL');
+  const [assignmentDateFilter, setAssignmentDateFilter] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -214,6 +240,27 @@ function CourseCurriculumPage() {
     return (paymentStatusFilter === 'ALL' || payment.status === paymentStatusFilter)
       && (!query || payment.studentName?.toLocaleLowerCase('vi').includes(query));
   }), [paymentSummary, paymentSearch, paymentStatusFilter]);
+  const visibleCourseAssignments = useMemo(() => {
+    const query = assignmentSearch.trim().toLocaleLowerCase('vi');
+    return courseAssignments.filter((item) => {
+      const matchQuery = !query || [item.title, item.description].some((value) => value?.toLocaleLowerCase('vi').includes(query));
+      const st = getAssignmentReviewStatus(item);
+      let matchStatus = true;
+      if (assignmentStatusFilter !== 'ALL') {
+        if (assignmentStatusFilter === 'PENDING_REVIEW') {
+          matchStatus = st.key === 'PENDING_REVIEW';
+        } else if (assignmentStatusFilter === 'REVIEWED') {
+          matchStatus = st.key === 'REVIEWED';
+        } else if (assignmentStatusFilter === 'RECEIVING') {
+          matchStatus = st.key === 'RECEIVING';
+        } else {
+          matchStatus = item.status === assignmentStatusFilter;
+        }
+      }
+      const matchDate = !assignmentDateFilter || (item.dueDate ? String(item.dueDate).slice(0, 10) === assignmentDateFilter : false);
+      return matchQuery && matchStatus && matchDate;
+    });
+  }, [courseAssignments, assignmentSearch, assignmentStatusFilter, assignmentDateFilter]);
   const paginatedPayments = visiblePayments.slice(paymentPage * 10, paymentPage * 10 + 10);
   const totalPaymentPages = Math.max(1, Math.ceil(visiblePayments.length / 10));
   useEffect(() => { setPaymentPage(0); }, [paymentSearch, paymentStatusFilter]);
@@ -263,7 +310,13 @@ function CourseCurriculumPage() {
             <section className={workspaceStats?.pendingReviewCount > 0 ? 'is-pending' : ''}>
               <span className="course-overview-priority-icon"><FiClipboard aria-hidden="true" /></span>
               <div><p>Việc cần chú ý</p><strong>{workspaceStats?.pendingReviewCount ?? '—'} bài chờ chấm</strong><small>{workspaceStats?.pendingReviewCount > 0 ? 'Xem bài nộp và gửi nhận xét cho sinh viên.' : 'Bài nộp mới sẽ xuất hiện tại đây.'}</small></div>
-              {workspaceStats?.pendingReviewCount > 0 && <button aria-label="Mở bài tập cần chấm" onClick={() => setSearchParams({ tab: 'assignments' })}>→</button>}
+              {workspaceStats?.pendingReviewCount > 0 && <button aria-label="Mở bài tập cần chấm" onClick={() => {
+  if (workspaceStats?.firstPendingAssignmentId) {
+    navigate(`/teacher/assignments/${workspaceStats.firstPendingAssignmentId}?subjectId=${courseId}`);
+  } else {
+    setSearchParams({ tab: 'assignments' });
+  }
+}}>→</button>}
             </section>
             <section><span className="course-overview-priority-icon"><FiUsers aria-hidden="true" /></span><div><p>Lớp học</p><strong>{workspaceStats?.studentCount ?? '—'} sinh viên</strong><small>Đang ghi danh khóa học</small></div><button aria-label="Mở danh sách sinh viên" onClick={() => setSearchParams({ tab: 'students' })}>→</button></section>
           </aside>
@@ -321,7 +374,29 @@ function CourseCurriculumPage() {
 
         {activeTab === 'assignments' && <section className="course-workspace-panel">
           <div className="course-workspace-panel-heading"><div><p className="cm-eyebrow">ĐÁNH GIÁ</p><h2>Bài tập của lớp</h2><p>Tạo đề bài và theo dõi bài nộp của sinh viên.</p></div><Link className="cm-button cm-button-primary" to={`/teacher/assignments/new?subjectId=${courseId}`}>＋ Tạo bài tập</Link></div>
-          {workspaceLoading ? <p className="course-workspace-loading" role="status">Đang tải bài tập…</p> : !courseAssignments.length ? <div className="cm-empty-state"><span className="cm-empty-icon"><FiClipboard aria-hidden="true" /></span><h3>Chưa có bài tập</h3><p>Tạo bài tập đầu tiên cho lớp này.</p><Link className="cm-button cm-button-primary" to={`/teacher/assignments/new?subjectId=${courseId}`}>Tạo bài tập</Link></div> : <div className="course-workspace-table-wrap"><table className="cm-table cm-assignment-table"><thead><tr><th>Bài tập</th><th>Hạn nộp</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{courseAssignments.map((item) => <tr key={item.id}><td><div className="cm-assignment-name"><span><FiClipboard aria-hidden="true" /></span><strong>{item.title}</strong></div><small>{item.assignmentType === 'QUIZ' ? 'Trắc nghiệm' : 'Tự luận / tài liệu'} · {item.maxScore ?? 10} điểm</small></td><td>{item.dueDate ? paymentDate(item.dueDate) : '—'}</td><td><span className={`cm-work-status status-${item.status?.toLowerCase()}`}>{({ DRAFT: 'Bản nháp', PUBLISHED: 'Đang nhận bài', CLOSED: 'Đã đóng', ARCHIVED: 'Đã lưu trữ' })[item.status] || item.status}</span></td><td><Link className="cm-table-action" to={`/teacher/assignments/${item.id}?subjectId=${courseId}`}>{item.status === 'DRAFT' ? 'Sửa bài tập' : 'Xem và chấm'} <FiArrowRight aria-hidden="true" /></Link></td></tr>)}</tbody></table></div>}
+          <div className="cm-assignment-filter-toolbar">
+            <label className="cm-workspace-search"><FiSearch aria-hidden="true" /><span className="sr-only">Tìm bài tập</span><input value={assignmentSearch} onChange={(e) => setAssignmentSearch(e.target.value)} placeholder="Tìm theo tên bài tập…" /></label>
+            <div className="cm-assignment-filters-group">
+              <label className="cm-filter-item"><span className="cm-filter-label">Trạng thái:</span><select value={assignmentStatusFilter} onChange={(e) => setAssignmentStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="PENDING_REVIEW">Chưa chấm / Chờ chấm</option><option value="REVIEWED">Đã chấm</option><option value="RECEIVING">Đang nhận bài</option><option value="CLOSED">Đã đóng</option><option value="DRAFT">Bản nháp</option></select></label>
+              <label className="cm-filter-item"><span className="cm-filter-label">Hạn nộp:</span><input type="date" value={assignmentDateFilter} onChange={(e) => setAssignmentDateFilter(e.target.value)} title="Lọc theo ngày hạn nộp" /></label>
+              {(assignmentSearch || assignmentStatusFilter !== 'ALL' || assignmentDateFilter) && <button type="button" className="cm-button cm-button-small cm-reset-btn" onClick={() => { setAssignmentSearch(''); setAssignmentStatusFilter('ALL'); setAssignmentDateFilter(''); }}>Đặt lại bộ lọc</button>}
+            </div>
+          </div>
+          {workspaceLoading ? <p className="course-workspace-loading" role="status">Đang tải bài tập…</p> : !courseAssignments.length ? <div className="cm-empty-state"><span className="cm-empty-icon"><FiClipboard aria-hidden="true" /></span><h3>Chưa có bài tập</h3><p>Tạo bài tập đầu tiên cho lớp này.</p><Link className="cm-button cm-button-primary" to={`/teacher/assignments/new?subjectId=${courseId}`}>Tạo bài tập</Link></div> : !visibleCourseAssignments.length ? <div className="course-workspace-empty">Không tìm thấy bài tập phù hợp với bộ lọc tìm kiếm.</div> : <div className="course-workspace-table-wrap"><table className="cm-table cm-assignment-table"><thead><tr><th>Bài tập</th><th>Hạn nộp</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{visibleCourseAssignments.map((item) => {
+  const st = getAssignmentReviewStatus(item);
+  const pending = Number(item.pendingReviewCount) || 0;
+  return (
+    <tr key={item.id}>
+      <td>
+        <div className="cm-assignment-name"><span><FiClipboard aria-hidden="true" /></span><strong>{item.title}</strong></div>
+        <small>{item.assignmentType === 'QUIZ' ? 'Trắc nghiệm' : 'Tự luận / tài liệu'} · {item.maxScore ?? 10} điểm</small>
+      </td>
+      <td>{item.dueDate ? paymentDate(item.dueDate) : '—'}</td>
+      <td><span className={`cm-work-status ${st.className}`}>{st.label}</span></td>
+      <td><Link className="cm-table-action" to={`/teacher/assignments/${item.id}?subjectId=${courseId}`}>{item.status === 'DRAFT' ? 'Sửa bài tập' : pending > 0 ? `Chấm bài (${pending})` : 'Xem và chấm'} <FiArrowRight aria-hidden="true" /></Link></td>
+    </tr>
+  );
+})}</tbody></table></div>}
         </section>}
 
         {activeTab === 'students' && <section className="course-workspace-panel">

@@ -51,7 +51,25 @@ public class TeacherWorkspaceService {
             row.put("studentCount", roster.stream().filter(e -> e.getStatus() == EnrollmentStatus.ACTIVE).count());
             row.put("modulesCount", modules.countByCourse_CourseId(course.getCourseId()));
             row.put("assignmentCount", assignments.count((root, query, cb) -> cb.equal(root.get("subjectId"), course.getCourseId())));
-            row.put("pendingReviewCount", submissions.countByAssignment_SubjectIdAndStatusNot(course.getCourseId(), com.ams.assignment.entity.Submission.Status.TEACHER_REVIEWED));
+            var pendingSubs = submissions.findAllByAssignment_SubjectIdAndStatusNot(course.getCourseId(), com.ams.assignment.entity.Submission.Status.TEACHER_REVIEWED);
+            row.put("pendingReviewCount", (long) pendingSubs.size());
+            Integer firstPendingAssignmentId = null;
+            Map<Integer, Map<String, Object>> pendingMap = new LinkedHashMap<>();
+            for (var s : pendingSubs) {
+                var a = s.getAssignment();
+                if (firstPendingAssignmentId == null) firstPendingAssignmentId = a.getId();
+                pendingMap.computeIfAbsent(a.getId(), aId -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("id", a.getId());
+                    item.put("title", a.getTitle());
+                    item.put("pendingCount", 0L);
+                    return item;
+                });
+                var item = pendingMap.get(a.getId());
+                item.put("pendingCount", (Long) item.get("pendingCount") + 1L);
+            }
+            row.put("firstPendingAssignmentId", firstPendingAssignmentId);
+            row.put("pendingAssignments", new ArrayList<>(pendingMap.values()));
             return row;
         }).toList();
     }

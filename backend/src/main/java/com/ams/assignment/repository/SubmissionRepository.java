@@ -12,4 +12,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Integer>
     List<Submission> findAllByAssignment_IdOrderBySubmittedAtAsc(Integer assignmentId);
 
     long countByAssignment_SubjectIdAndStatusNot(Integer courseId, Submission.Status status);
+
+    List<Submission> findAllByAssignment_SubjectIdAndStatusNot(Integer courseId, Submission.Status status);
 }

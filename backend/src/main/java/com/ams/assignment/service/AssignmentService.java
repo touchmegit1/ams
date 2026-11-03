@@ -22,6 +22,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor @Transactional(readOnly=true)
 public class AssignmentService {
+    public static final List<String> DEFAULT_ALLOWED_TYPES = List.of("PDF", "DOC", "DOCX", "ZIP", "TXT", "PPTX", "XLSX", "PNG", "JPG");
     private final AssignmentRepository assignments;
     private final AssignmentTemplateRepository templates;
     private final CourseRepository courses;
@@ -46,7 +47,8 @@ public class AssignmentService {
         subject(a.getSubjectId(),auth); return a;
     }
     private Pageable pageable(int page,int size) { if(page<0 || size<1 || size>100) throw new AssignmentException(400,"Phân trang không hợp lệ"); return PageRequest.of(page,size,Sort.by(Sort.Direction.DESC,"updatedAt").and(Sort.by(Sort.Direction.DESC,"id"))); }
-    public Map<String,Object> list(String keyword,Integer subjectId,Source source,Status status,int page,int size,Authentication auth) {
+    public Map<String,Object> list(String keyword,Integer subjectId,Source source,Status status,int page,int size,Authentication auth) { return list(keyword,subjectId,source,status,null,page,size,auth); }
+    public Map<String,Object> list(String keyword,Integer subjectId,Source source,Status status,java.time.LocalDate dueDate,int page,int size,Authentication auth) {
         List<Integer> ids = admin(auth) ? null : subjectIds(auth);
         Specification<Assignment> spec = (root,q,cb) -> {
             List<Predicate> p = new ArrayList<>();
@@ -55,6 +57,7 @@ public class AssignmentService {
             if(source!=null) p.add(cb.equal(root.get("source"),source));
             p.add(status==null ? cb.notEqual(root.get("status"),Status.ARCHIVED) : cb.equal(root.get("status"),status));
             if(keyword!=null && !keyword.isBlank()) p.add(cb.like(cb.lower(root.get("title")),"%"+escape(keyword.toLowerCase().trim())+"%",'!'));
+            if(dueDate!=null) { p.add(cb.greaterThanOrEqualTo(root.get("dueDate"), dueDate.atStartOfDay())); p.add(cb.lessThan(root.get("dueDate"), dueDate.plusDays(1).atStartOfDay())); }
             return cb.and(p.toArray(Predicate[]::new));
         };
         return page(assignments.findAll(spec,pageable(page,size)).map(this::view));
@@ -62,12 +65,8 @@ public class AssignmentService {
     private String escape(String s) { return s.replace("!","!!").replace("%","!%").replace("_","!_"); }
     private Map<String,Object> page(Page<?> p) { return Map.of("content",p.getContent(),"totalElements",p.getTotalElements(),"totalPages",p.getTotalPages(),"number",p.getNumber()); }
     public Map<String,Object> detail(Integer id,Authentication auth) {
-        Assignment a=owned(id,auth); Map<String,Object> result=view(a);
-        if(a.getStatus()!=Status.DRAFT) {
-            result.put("enrolledCount",countIfAvailable("course_enrollments","select count(distinct student_id) from course_enrollments where course_id = ? and status = 'ACTIVE'",a.getSubjectId()));
-            result.put("submissionCount",countIfAvailable("submissions","select count(distinct student_id) from submissions where assignment_id = ?",a.getId()));
-        }
-        return result;
+        Assignment a=owned(id,auth);
+        return view(a);
     }
     // Other modules may not have installed their tables yet. Never invent submission counts.
     private Long countIfAvailable(String table,String sql,Integer id) {
@@ -86,8 +85,27 @@ public class AssignmentService {
         m.put("title",a.getTitle()); m.put("description",a.getDescription()); m.put("rubric",rubric(a.getRubricJson()));
         m.put("dueDate",a.getDueDate()); m.put("maxScore",a.getMaxScore()); m.put("source",a.getSource()); m.put("status",a.getStatus());
         m.put("templateId",a.getTemplateId()); m.put("templateName",a.getTemplateId()==null ? null : templates.findById(a.getTemplateId()).map(AssignmentTemplate::getName).orElse(null));
-        m.put("allowedFileTypes",a.getAllowedFileTypes()==null || a.getAllowedFileTypes().isBlank() ? List.of() : Arrays.asList(a.getAllowedFileTypes().split(",")));
-        m.put("creator",creator(a.getCreatedBy())); m.put("updatedAt",a.getUpdatedAt()); m.put("aiPrompt",a.getAiPrompt()); return m;
+        List<String> fileTypes = "QUIZ".equals(a.getAssignmentType()) ? List.of()
+            : (a.getAllowedFileTypes() == null || a.getAllowedFileTypes().isBlank() ? DEFAULT_ALLOWED_TYPES
+                : Arrays.stream(a.getAllowedFileTypes().split(",")).map(String::trim).filter(s -> !s.isBlank()).map(s -> s.toUpperCase(Locale.ROOT)).toList());
+        m.put("allowedFileTypes", fileTypes);
+        m.put("creator",creator(a.getCreatedBy())); m.put("updatedAt",a.getUpdatedAt()); m.put("aiPrompt",a.getAiPrompt());
+        if (a.getStatus() != Status.DRAFT) {
+            Long subCount = countIfAvailable("submissions", "select count(distinct student_id) from submissions where assignment_id = ?", a.getId());
+            Long pendingCount = countIfAvailable("submissions", "select count(distinct student_id) from submissions where assignment_id = ? and status != 'TEACHER_REVIEWED'", a.getId());
+            Long reviewedCount = countIfAvailable("submissions", "select count(distinct student_id) from submissions where assignment_id = ? and status = 'TEACHER_REVIEWED'", a.getId());
+            Long enrollCount = countIfAvailable("course_enrollments", "select count(distinct student_id) from course_enrollments where course_id = ? and status = 'ACTIVE'", a.getSubjectId());
+            m.put("submissionCount", subCount != null ? subCount : 0L);
+            m.put("pendingReviewCount", pendingCount != null ? pendingCount : 0L);
+            m.put("reviewedCount", reviewedCount != null ? reviewedCount : 0L);
+            m.put("enrolledCount", enrollCount != null ? enrollCount : 0L);
+        } else {
+            m.put("submissionCount", 0L);
+            m.put("pendingReviewCount", 0L);
+            m.put("reviewedCount", 0L);
+            m.put("enrolledCount", 0L);
+        }
+        return m;
     }
     public List<Criterion> rubric(String value) {
         try { return json.readValue(value,new TypeReference<List<Criterion>>(){}); }
