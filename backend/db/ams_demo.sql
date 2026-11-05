@@ -11,6 +11,7 @@ CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
+    department VARCHAR(150),
     password_hash VARCHAR(255),
     role ENUM('STUDENT','TEACHER','ADMIN') NOT NULL DEFAULT 'STUDENT',
     google_id VARCHAR(100) UNIQUE,

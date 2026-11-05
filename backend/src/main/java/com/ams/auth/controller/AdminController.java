@@ -59,33 +59,18 @@ public class AdminController {
 
     private Account toAccount(User user) {
         String userCode;
-        String department;
+        String department = user.getDepartment();
         long count = 0;
         int id = user.getUserId() != null ? user.getUserId() : 1;
 
         if (user.getRole() == User.Role.TEACHER) {
             userCode = String.format("GV%03d", id % 1000);
-            String[] depts = {
-                    "Khoa CNTT · Bộ môn Mạng & HTTT",
-                    "Khoa HTTT · Bộ môn CSDL Quản trị",
-                    "Khoa KTPM · Bộ môn Kỹ thuật Phần mềm",
-                    "Khoa Trí tuệ Nhân tạo · Bộ môn Học máy & Xử lý DL"
-            };
-            department = depts[Math.abs(id) % depts.length];
             count = courses.countByTeacher_UserId(id);
         } else if (user.getRole() == User.Role.STUDENT) {
             userCode = String.format("SV2021%04d", (id * 137) % 10000);
-            String[] classes = {
-                    "Khoa KTPM · Lớp K21-CNTT02",
-                    "Khoa HTTT · Lớp K21-HTTT01",
-                    "Khoa CNTT · Lớp K22-KHMT01",
-                    "Khoa AI · Lớp K22-DS02"
-            };
-            department = classes[Math.abs(id) % classes.length];
             count = enrollments.countByStudent_UserId(id);
         } else {
             userCode = String.format("AD%03d", id % 1000);
-            department = "Ban Giám hiệu · Quản trị viên AMS";
             count = 0;
         }
 
@@ -107,10 +92,19 @@ public class AdminController {
     @Transactional(readOnly = true)
     public Page<Account> list(@RequestParam(defaultValue = "") String search,
                               @RequestParam(defaultValue = "ALL") String role,
+                              @RequestParam(defaultValue = "ALL") String status,
+                              @RequestParam(defaultValue = "") String department,
                               @RequestParam(defaultValue = "0") int page) {
         if (page < 0) throw new AuthBusinessException("Trang không hợp lệ.");
         User.Role selected = "ALL".equals(role) ? null : parseRole(role);
-        return users.searchAccounts(search.trim(), selected,
+        Boolean enabled = switch (status) {
+            case "ALL" -> null;
+            case "ENABLED" -> true;
+            case "DISABLED" -> false;
+            default -> throw new AuthBusinessException("Trạng thái không hợp lệ.");
+        };
+        return users.searchAccounts(search.trim(), selected, enabled,
+                department.isBlank() ? null : department.trim(),
                 PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "createdAt", "userId")))
                 .map(this::toAccount);
     }
@@ -145,6 +139,7 @@ public class AdminController {
                 .email(req.email().trim().toLowerCase())
                 .passwordHash(passwordEncoder.encode(req.password()))
                 .role(req.role())
+                .department(req.department() == null || req.department().isBlank() ? null : req.department().trim())
                 .isEnabled(true)
                 .isVerified(true)
                 .build();

@@ -16,8 +16,10 @@ import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
-    @Query("select u from User u where (:role is null or u.role = :role) and (lower(u.fullName) like lower(concat('%', :search, '%')) or lower(u.email) like lower(concat('%', :search, '%')))")
-    Page<User> searchAccounts(@Param("search") String search, @Param("role") User.Role role, Pageable pageable);
+    @Query("select u from User u where (:role is null or u.role = :role) and (:enabled is null or u.isEnabled = :enabled) and (:department is null or lower(u.department) like lower(concat('%', :department, '%'))) and (lower(u.fullName) like lower(concat('%', :search, '%')) or lower(u.email) like lower(concat('%', :search, '%')))")
+    Page<User> searchAccounts(@Param("search") String search, @Param("role") User.Role role,
+                              @Param("enabled") Boolean enabled, @Param("department") String department,
+                              Pageable pageable);
 
     @Modifying
     @Transactional

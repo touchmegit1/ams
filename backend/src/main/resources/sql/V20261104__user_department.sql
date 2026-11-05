@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD COLUMN department VARCHAR(150) NULL;

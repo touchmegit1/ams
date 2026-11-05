@@ -699,11 +699,12 @@
   border: 1px solid var(--admin-border);
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(18, 43, 30, 0.03);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .admin-data-table {
   width: 100%;
+  min-width: 980px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -893,6 +894,12 @@
   display: grid;
   place-items: center;
   font-size: 14px;
+}
+
+.admin-delete-slot {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
 }
 
 .admin-btn-icon-danger:hover {
@@ -1798,9 +1805,18 @@
   }
   .admin-filter-bar {
     flex-direction: column;
+    align-items: stretch;
   }
   .admin-search-box,
   .admin-select {
     width: 100%;
+  }
+  .admin-pagination-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pagination-controls {
+    flex-wrap: wrap;
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import {
   FiUsers,
   FiUserCheck,
@@ -23,68 +23,7 @@ import { toast } from 'react-toastify';
 import { getAccounts, getAccountStats, createAccount, updateAccount, deleteAccount } from '../../services/adminService.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
-const MOCK_ACCOUNTS_FALLBACK = [
-  {
-    userId: 14,
-    fullName: 'ThS. Hoàng Nhật Nam',
-    email: 'namhn@ams.edu.vn',
-    role: 'TEACHER',
-    verified: true,
-    enabled: true,
-    userCode: 'GV014',
-    department: 'Khoa CNTT · Bộ môn Mạng & HTTT',
-    courseCount: 3,
-    createdAt: '2026-09-01T08:00:00'
-  },
-  {
-    userId: 2,
-    fullName: 'TS. Nguyễn Văn An',
-    email: 'an.nguyen@ams.edu.vn',
-    role: 'TEACHER',
-    verified: true,
-    enabled: true,
-    userCode: 'GV002',
-    department: 'Khoa HTTT · Bộ môn CSDL Quản trị',
-    courseCount: 4,
-    createdAt: '2026-08-15T09:30:00'
-  },
-  {
-    userId: 88,
-    fullName: 'Lê Minh Quân',
-    email: 'leminhquan@student.ams.edu.vn',
-    role: 'STUDENT',
-    verified: true,
-    enabled: true,
-    userCode: 'SV20210088',
-    department: 'Khoa KTPM · Lớp K21-CNTT02',
-    courseCount: 4,
-    createdAt: '2026-10-05T14:20:00'
-  },
-  {
-    userId: 319,
-    fullName: 'Bùi Quang Minh',
-    email: 'minhbq@student.ams.edu.vn',
-    role: 'STUDENT',
-    verified: true,
-    enabled: true,
-    userCode: 'SV2021319',
-    department: 'Khoa HTTT · Lớp K21-HTTT01',
-    courseCount: 2,
-    createdAt: '2026-10-10T11:15:00'
-  },
-  {
-    userId: 9,
-    fullName: 'ThS. Đỗ Thùy Linh',
-    email: 'linh.do@ams.edu.vn',
-    role: 'TEACHER',
-    verified: true,
-    enabled: true,
-    userCode: 'GV009',
-    department: 'Khoa Trí tuệ Nhân tạo · Bộ môn Học máy & Xử lý DL',
-    courseCount: 4,
-    createdAt: '2026-09-12T16:00:00'
-  }
-];
+const PAGE_SIZE = 10;
 
 export default function AdminAccounts() {
   const { user: currentUser } = useAuth();
@@ -95,7 +34,7 @@ export default function AdminAccounts() {
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'TEACHER' | 'STUDENT' | 'ADMIN'
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [deptFilter, setDeptFilter] = useState('ALL');
+  const [deptFilter, setDeptFilter] = useState('');
   const [page, setPage] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newUserData, setNewUserData] = useState({
@@ -110,7 +49,7 @@ export default function AdminAccounts() {
     setLoading(true);
     try {
       const [accountsRes, statsRes] = await Promise.allSettled([
-        getAccounts({ search, role: activeTab, page }),
+        getAccounts({ search, role: activeTab, status: statusFilter, department: deptFilter, page }),
         getAccountStats()
       ]);
 
@@ -129,39 +68,13 @@ export default function AdminAccounts() {
 
   useEffect(() => {
     loadAccounts();
-  }, [search, activeTab, page]);
+  }, [search, activeTab, statusFilter, deptFilter, page]);
 
-  // Merge with fallback sample items if current database has few items
   const accountsList = useMemo(() => {
-    const rawList = data?.content || [];
-    if (rawList.length > 0) {
-      // Ensure each account has formatted userCode & department
-      return rawList.map((acc, index) => ({
-        ...acc,
-        userCode: acc.userCode || (acc.role === 'TEACHER' ? `GV${String(acc.userId || index + 1).padStart(3, '0')}` : acc.role === 'STUDENT' ? `SV2021${String(acc.userId || index + 1).padStart(4, '0')}` : `AD${String(acc.userId || 1).padStart(3, '0')}`),
-        department: acc.department || (acc.role === 'TEACHER' ? 'Khoa CNTT · Bộ môn Mạng & HTTT' : acc.role === 'STUDENT' ? 'Khoa KTPM · Lớp K21-CNTT02' : 'Ban Quản trị AMS'),
-        courseCount: acc.courseCount || (acc.role === 'TEACHER' ? 3 : 2)
-      }));
-    }
-    // Fallback sample items for presentation matching mockups
-    return MOCK_ACCOUNTS_FALLBACK.filter((item) => {
-      if (activeTab !== 'ALL' && item.role !== activeTab) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return item.fullName.toLowerCase().includes(q) || item.email.toLowerCase().includes(q) || item.userCode.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [data, activeTab, search]);
+    return data?.content || [];
+  }, [data]);
 
-  const filteredAccounts = useMemo(() => {
-    return accountsList.filter((item) => {
-      if (statusFilter === 'ENABLED' && !item.enabled) return false;
-      if (statusFilter === 'DISABLED' && item.enabled) return false;
-      if (deptFilter !== 'ALL' && !item.department?.includes(deptFilter)) return false;
-      return true;
-    });
-  }, [accountsList, statusFilter, deptFilter]);
+  const filteredAccounts = accountsList;
 
   const handleToggleStatus = async (account) => {
     setSavingId(account.userId);
@@ -256,11 +169,16 @@ export default function AdminAccounts() {
     return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const totalCount = stats?.totalAccounts ?? (data?.totalElements || 1842);
-  const teacherCount = stats?.teacherCount ?? 38;
-  const studentCount = stats?.studentCount ?? 1796;
-  const adminCount = stats?.adminCount ?? 8;
-  const blockedCount = stats?.blockedOrPendingCount ?? 8;
+  const totalCount = stats?.totalAccounts ?? data?.totalElements ?? 0;
+  const teacherCount = stats?.teacherCount ?? 0;
+  const studentCount = stats?.studentCount ?? 0;
+  const adminCount = stats?.adminCount ?? 0;
+  const blockedCount = stats?.blockedOrPendingCount ?? 0;
+  const totalPages = data?.totalPages ?? 0;
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index)
+    .filter((pageNumber) => pageNumber === 0 || pageNumber === totalPages - 1 || Math.abs(pageNumber - page) <= 1);
+  const rangeStart = data?.totalElements ? page * PAGE_SIZE + 1 : 0;
+  const rangeEnd = Math.min((page + 1) * PAGE_SIZE, data?.totalElements ?? 0);
 
   return (
     <div className="admin-page-view">
@@ -371,7 +289,7 @@ export default function AdminAccounts() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             placeholder="Tìm theo Tên, Email, MSSV, Mã GV..."
           />
         </div>
@@ -379,7 +297,7 @@ export default function AdminAccounts() {
         <select
           className="admin-select"
           value={activeTab}
-          onChange={(e) => setActiveTab(e.target.value)}
+          onChange={(e) => { setActiveTab(e.target.value); setPage(0); }}
         >
           <option value="ALL">Vai trò: Tất cả vai trò</option>
           <option value="TEACHER">Vai trò: Giảng viên</option>
@@ -390,7 +308,7 @@ export default function AdminAccounts() {
         <select
           className="admin-select"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
         >
           <option value="ALL">Trạng thái: Tất cả</option>
           <option value="ENABLED">Đang hoạt động</option>
@@ -400,14 +318,15 @@ export default function AdminAccounts() {
         <select
           className="admin-select"
           value={deptFilter}
-          onChange={(e) => setDeptFilter(e.target.value)}
+          onChange={(e) => { setDeptFilter(e.target.value); setPage(0); }}
         >
-          <option value="ALL">Khoa / Đơn vị: Tất cả</option>
-          <option value="CNTT">Khoa CNTT</option>
-          <option value="HTTT">Khoa HTTT</option>
-          <option value="KTPM">Khoa KTPM</option>
-          <option value="Trí tuệ Nhân tạo">Khoa AI & Trí tuệ Nhân tạo</option>
+          <option value="">Khoa / Đơn vị: Tất cả</option>
+          <option value="CNTT">CNTT</option>
+          <option value="HTTT">HTTT</option>
+          <option value="KTPM">KTPM</option>
+          <option value="Trí tuệ Nhân tạo">Trí tuệ Nhân tạo</option>
         </select>
+
       </div>
 
       {/* Main Table */}
@@ -437,7 +356,7 @@ export default function AdminAccounts() {
                       <div className="admin-user-info">
                         <div className="admin-name-row">
                           <strong className="admin-user-fullname">{account.fullName}</strong>
-                          <span className="admin-user-code-badge">{account.userCode}</span>
+                          {account.userCode && <span className="admin-user-code-badge">{account.userCode}</span>}
                         </div>
                         <span className="admin-user-email">{account.email}</span>
                       </div>
@@ -457,7 +376,7 @@ export default function AdminAccounts() {
                   {/* Column 3: Department */}
                   <td>
                     <div className="admin-dept-cell">
-                      <span className="admin-dept-text">{account.department || 'Khoa CNTT'}</span>
+                      <span className="admin-dept-text">{account.department || 'Chưa cập nhật'}</span>
                     </div>
                   </td>
 
@@ -467,8 +386,8 @@ export default function AdminAccounts() {
                       <FiBookOpen className="course-icon" />
                       <span>
                         {account.role === 'TEACHER'
-                          ? `${account.courseCount || 3} Khóa học phụ trách`
-                          : `Đã ghi danh ${account.courseCount || 4} môn`}
+                          ? `${account.courseCount ?? 0} Khóa học phụ trách`
+                          : `Đã ghi danh ${account.courseCount ?? 0} môn`}
                       </span>
                     </div>
                   </td>
@@ -497,12 +416,15 @@ export default function AdminAccounts() {
                         <option value="ADMIN">Quản trị viên</option>
                       </select>
 
-                      {!isSelf && (
+                      {isSelf ? (
+                        <span className="admin-delete-slot" aria-hidden="true" />
+                      ) : (
                         <button
                           className="admin-btn-icon-danger"
                           disabled={isLocked}
                           onClick={() => handleDelete(account)}
                           title="Xóa tài khoản"
+                          aria-label={`Xóa tài khoản ${account.fullName}`}
                         >
                           <FiTrash2 />
                         </button>
@@ -525,7 +447,7 @@ export default function AdminAccounts() {
         {/* Pagination Footer */}
         <div className="admin-pagination-footer">
           <span className="pagination-text">
-            Hiển thị 1 - {filteredAccounts.length} trên tổng số {totalCount.toLocaleString('vi-VN')} tài khoản
+            Hiển thị {rangeStart}–{rangeEnd} trên {data?.totalElements ?? 0} tài khoản{totalCount !== (data?.totalElements ?? 0) ? ` (tổng hệ thống: ${totalCount.toLocaleString('vi-VN')})` : ''}
           </span>
           <div className="pagination-controls">
             <button
@@ -535,14 +457,20 @@ export default function AdminAccounts() {
             >
               <FiChevronLeft />
             </button>
-            <button className="page-num-btn active">1</button>
-            <button className="page-num-btn">2</button>
-            <button className="page-num-btn">3</button>
-            <span className="page-dots">...</span>
-            <button className="page-num-btn">369</button>
+            {pageNumbers.map((pageNumber, index) => (
+              <Fragment key={pageNumber}>
+                {index > 0 && pageNumber - pageNumbers[index - 1] > 1 && <span className="page-dots">…</span>}
+                <button
+                  className={`page-num-btn ${pageNumber === page ? 'active' : ''}`}
+                  aria-current={pageNumber === page ? 'page' : undefined}
+                  disabled={loading}
+                  onClick={() => setPage(pageNumber)}
+                >{pageNumber + 1}</button>
+              </Fragment>
+            ))}
             <button
               className="page-nav-btn"
-              disabled={loading}
+              disabled={loading || page >= totalPages - 1}
               onClick={() => setPage(page + 1)}
             >
               <FiChevronRight />
