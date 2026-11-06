@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { FiArrowLeft, FiArrowRight, FiDownload, FiAlertTriangle, FiZap, FiRefreshCw, FiClock, FiCpu, FiCheck, FiInfo, FiHelpCircle } from 'react-icons/fi';
 import { SmoothLink as Link, useWorkspaceNavigate as useNavigate } from '../../components/common/WorkspaceNavigation.jsx';
 import { toast } from 'react-toastify';
 import api from '../../services/api.js';
@@ -121,7 +122,7 @@ export default function AssignmentDetailPage({ template = false }) {
     catch (e) { toast.error(errorText(e)); } finally { setBusy(false); }
   };
 
-  if (!item) return <><Link to={courseId ? returnPath : base}>← Quay lại</Link><Notice error>{error}</Notice>{!error && <Notice>Đang tải…</Notice>}</>;
+  if (!item) return <><Link to={courseId ? returnPath : base}><FiArrowLeft aria-hidden="true" /> Quay lại</Link><Notice error>{error}</Notice>{!error && <Notice>Đang tải…</Notice>}</>;
 
   const editable = !template && ['DRAFT', 'PUBLISHED'].includes(item.status);
   const gradingMode = !template && item.status !== 'DRAFT';
@@ -134,8 +135,8 @@ export default function AssignmentDetailPage({ template = false }) {
   const submittedCount = pendingCount + reviewedCount;
 
   return <>
-    <Link className="assignment-back" to={returnPath}>← {template ? 'Thư viện mẫu' : courseId ? 'Bài tập của khóa học' : 'Danh sách khóa học'}</Link>
-    {gradingMode ? <section className="assignment-card teacher-grading-hero"><div><span className="assignment-eyebrow">{item.subjectName || 'Bài tập của khóa học'}</span><div className="teacher-grading-hero-title"><h1>{item.name || item.title}</h1><StatusTag status={item.status} /></div><p>{item.description}</p>{item.resourceUrl && <p><a href={item.resourceUrl} target="_blank" rel="noopener noreferrer">Mở tài liệu tham khảo</a></p>}<div className="teacher-grading-hero-meta"><span>Hạn nộp: {dateText(item.dueDate)}</span><span>Thang điểm: {item.maxScore} điểm</span></div></div><div className="teacher-grading-hero-actions"><Link className="button" to={returnPath}>← Danh sách bài tập</Link>{editable && <Link className="button" to={`${base}/${id}/edit${courseId ? `?subjectId=${courseId}` : ''}`}>Sửa bài tập</Link>}</div></section> : <PageHeading title={item.name || item.title}>{!template && <StatusTag status={item.status} />}{template && <Link className="primary button" to={`/teacher/assignments/new?templateId=${id}`}>Dùng mẫu này</Link>}</PageHeading>}
+    <Link className="assignment-back" to={returnPath}><FiArrowLeft aria-hidden="true" /> {template ? 'Thư viện mẫu' : courseId ? 'Bài tập của khóa học' : 'Danh sách khóa học'}</Link>
+    {gradingMode ? <section className="assignment-card teacher-grading-hero"><div className="teacher-grading-hero-header"><div className="teacher-grading-hero-heading"><span className="assignment-eyebrow">{item.subjectName || 'Bài tập của khóa học'}</span><div className="teacher-grading-hero-title"><h1>{item.name || item.title}</h1><StatusTag status={item.status} /></div></div><div className="teacher-grading-hero-actions"><Link className="button" to={returnPath}><FiArrowLeft aria-hidden="true" /> Danh sách bài tập</Link>{editable && <Link className="button" to={`${base}/${id}/edit${courseId ? `?subjectId=${courseId}` : ''}`}>Sửa bài tập</Link>}</div></div><div className="teacher-grading-hero-content"><h2>Nội dung bài tập</h2><p className="teacher-grading-hero-description">{item.description}</p>{item.resourceUrl && <a className="teacher-grading-hero-resource" href={item.resourceUrl} target="_blank" rel="noopener noreferrer">Mở tài liệu tham khảo ↗</a>}</div><div className="teacher-grading-hero-meta"><span><strong>Hạn nộp</strong>{dateText(item.dueDate)}</span><span><strong>Thang điểm</strong>{item.maxScore} điểm</span></div></section> : <PageHeading title={item.name || item.title}>{!template && <StatusTag status={item.status} />}{template && <Link className="primary button" to={`/teacher/assignments/new?templateId=${id}`}>Dùng mẫu này</Link>}</PageHeading>}
     {!gradingMode && <section className="assignment-card"><h2>Thông tin chung</h2><dl className="assignment-info">
       <div><dt>Môn học</dt><dd>{item.subjectName}</dd></div><div><dt>Người tạo</dt><dd>{item.creator}</dd></div><div><dt>Cập nhật lần cuối</dt><dd>{dateText(item.updatedAt)}</dd></div><div><dt>Điểm tối đa</dt><dd>{item.maxScore ?? item.defaultMaxScore}</dd></div>
       {template ? <div><dt>Lượt sử dụng</dt><dd>{item.usageCount}</dd></div> : <><div><dt>Hạn nộp</dt><dd>{dateText(item.dueDate)}</dd></div><div><dt>Nguồn tạo</dt><dd>{sources[item.source]}</dd></div><div><dt>Mẫu bài tập</dt><dd>{item.templateName || '—'}</dd></div><div><dt>Định dạng nộp</dt><dd>{item.assignmentType === 'QUIZ' ? 'Trả lời trắc nghiệm' : item.allowedFileTypes?.join(', ') || 'Chưa giới hạn'}</dd></div></>}
@@ -188,9 +189,9 @@ export default function AssignmentDetailPage({ template = false }) {
               <p>{selectedSubmission.studentEmail} · {selectedSubmission.status === 'NOT_SUBMITTED' ? <strong style={{ color: '#b45309' }}>Chưa nộp bài</strong> : `Nộp lúc ${dateText(selectedSubmission.submittedAt)}`}</p>
             </div>
             <div className="teacher-grading-stepper">
-              <button type="button" aria-label="Bài nộp trước" disabled={selectedIndex <= 0} onClick={() => setSelectedSubmissionId(visibleSubmissions[selectedIndex - 1]?.submissionId)}>←</button>
+              <button type="button" aria-label="Bài nộp trước" disabled={selectedIndex <= 0} onClick={() => setSelectedSubmissionId(visibleSubmissions[selectedIndex - 1]?.submissionId)}><FiArrowLeft aria-hidden="true" /></button>
               <span>{selectedIndex + 1} / {visibleSubmissions.length}</span>
-              <button type="button" aria-label="Bài nộp tiếp theo" disabled={selectedIndex < 0 || selectedIndex >= visibleSubmissions.length - 1} onClick={() => setSelectedSubmissionId(visibleSubmissions[selectedIndex + 1]?.submissionId)}>→</button>
+              <button type="button" aria-label="Bài nộp tiếp theo" disabled={selectedIndex < 0 || selectedIndex >= visibleSubmissions.length - 1} onClick={() => setSelectedSubmissionId(visibleSubmissions[selectedIndex + 1]?.submissionId)}><FiArrowRight aria-hidden="true" /></button>
             </div>
           </header>
           <div className="teacher-submission-content">
@@ -198,7 +199,7 @@ export default function AssignmentDetailPage({ template = false }) {
 
             {selectedSubmission.status === 'NOT_SUBMITTED' ? (
               <div className="teacher-submission-unsubmitted-box">
-                <div className="teacher-unsubmitted-icon">⚠️</div>
+                <div className="teacher-unsubmitted-icon"><FiAlertTriangle aria-hidden="true" /></div>
                 <div className="teacher-unsubmitted-text">
                   <h4>Sinh viên chưa nộp bài</h4>
                   <p>Sinh viên này đang ghi danh trong lớp nhưng chưa gửi bài nộp cho bài tập này. Giảng viên có thể cho điểm 0 hoặc nhập phản hồi/nhắc nhở bên dưới để ghi nhận kết quả.</p>
@@ -208,7 +209,7 @@ export default function AssignmentDetailPage({ template = false }) {
               <>
             {/* 1. HIỂN THỊ NỘI DUNG VĂN BẢN VÀ TỆP SINH VIÊN GỬI TRƯỚC */}
             {selectedSubmission.submissionText && <div className="teacher-submission-text-wrap"><pre className="teacher-submission-text">{(() => { if (item.assignmentType !== 'QUIZ') return selectedSubmission.submissionText; try { const answers = JSON.parse(selectedSubmission.submissionText); return answers.map((indices, index) => `${index + 1}. ${(indices || []).map((choice) => item.questions?.[index]?.options?.[choice]).filter(Boolean).join(', ')}`).join('\n'); } catch { return selectedSubmission.submissionText; } })()}</pre></div>}
-            {selectedSubmission.fileName && <button className="teacher-submission-file" type="button" onClick={() => downloadFile(selectedSubmission)}>↓ Tải tệp · {selectedSubmission.fileName}</button>}
+            {selectedSubmission.fileName && <button className="teacher-submission-file" type="button" onClick={() => downloadFile(selectedSubmission)}><FiDownload aria-hidden="true" /> Tải tệp · {selectedSubmission.fileName}</button>}
             {!selectedSubmission.submissionText && !selectedSubmission.fileName && <p className="teacher-submission-missing">Sinh viên chưa đính kèm nội dung hoặc tệp.</p>}
 
             {/* 2. NẾU LÀ QUIZ: HIỂN THỊ KẾT QUẢ TỰ CHẤM TRẮC NGHIỆM */}
@@ -224,7 +225,7 @@ export default function AssignmentDetailPage({ template = false }) {
               <div className="teacher-ai-eval-box">
                 <div className="teacher-ai-eval-header">
                   <div>
-                    <h5>✨ Đánh giá & gợi ý điểm từ AI</h5>
+                    <h5><FiZap aria-hidden="true" /> Đánh giá & gợi ý điểm từ AI</h5>
                     <span>AI đọc nội dung tệp và câu trả lời, so sánh với yêu cầu đề bài để gợi ý điểm số & nhận xét</span>
                   </div>
                   <button
@@ -233,13 +234,13 @@ export default function AssignmentDetailPage({ template = false }) {
                     disabled={aiEvaluating}
                     onClick={() => requestAiEvaluation(selectedSubmission)}
                   >
-                    {aiEvaluating ? '⏳ Đang đọc file & đánh giá…' : selectedSubmission.aiEvaluationStatus === 'COMPLETED' ? '🔄 Đánh giá lại bằng AI' : '✨ Đánh giá bài làm bằng AI'}
+                    {aiEvaluating ? <><FiClock aria-hidden="true" /> Đang đọc file & đánh giá…</> : selectedSubmission.aiEvaluationStatus === 'COMPLETED' ? <><FiRefreshCw aria-hidden="true" /> Đánh giá lại bằng AI</> : <><FiZap aria-hidden="true" /> Đánh giá bài làm bằng AI</>}
                   </button>
                 </div>
 
                 {aiEvaluating && (
                   <div className="teacher-ai-loading">
-                    <p>🤖 Gemini AI đang đọc tệp đính kèm của sinh viên, đối chiếu với yêu cầu đề bài và phân tích đúng/sai…</p>
+                    <p><FiCpu aria-hidden="true" /> Gemini AI đang đọc tệp đính kèm của sinh viên, đối chiếu với yêu cầu đề bài và phân tích đúng/sai…</p>
                   </div>
                 )}
 
@@ -256,7 +257,7 @@ export default function AssignmentDetailPage({ template = false }) {
                         onClick={() => applyAiGrade(selectedSubmission.aiScore, selectedSubmission.aiFeedback)}
                         title="Điền điểm này vào ô điểm số bên dưới"
                       >
-                        👉 Áp dụng điểm này
+                        <FiCheck aria-hidden="true" /> Áp dụng điểm này
                       </button>
                     </div>
                     <div className="teacher-ai-feedback">
@@ -268,19 +269,19 @@ export default function AssignmentDetailPage({ template = false }) {
 
                 {!aiEvaluating && selectedSubmission.aiEvaluationStatus === 'FAILED' && (
                   <div className="teacher-ai-failed">
-                    <p>⚠️ {selectedSubmission.aiFeedback || 'AI chưa thể hoàn tất đánh giá bài làm lúc này. Vui lòng bấm nút "Đánh giá bài làm bằng AI" để thử lại.'}</p>
+                    <p><FiAlertTriangle aria-hidden="true" /> {selectedSubmission.aiFeedback || 'AI chưa thể hoàn tất đánh giá bài làm lúc này. Vui lòng bấm nút "Đánh giá bài làm bằng AI" để thử lại.'}</p>
                   </div>
                 )}
 
                 {!aiEvaluating && selectedSubmission.aiEvaluationStatus === 'UNSUPPORTED' && (
                   <div className="teacher-ai-unsupported">
-                    <p>ℹ️ {selectedSubmission.aiFeedback || 'Tệp chưa có nội dung văn bản để AI phân tích tự động. Giảng viên có thể tải tệp để chấm thủ công hoặc thử lại bằng nút Đánh giá AI.'}</p>
+                    <p><FiInfo aria-hidden="true" /> {selectedSubmission.aiFeedback || 'Tệp chưa có nội dung văn bản để AI phân tích tự động. Giảng viên có thể tải tệp để chấm thủ công hoặc thử lại bằng nút Đánh giá AI.'}</p>
                   </div>
                 )}
 
                 {!aiEvaluating && !selectedSubmission.aiEvaluationStatus && (
                   <div className="teacher-ai-hint">
-                    <p>💡 Bấm nút <strong>"Đánh giá bài làm bằng AI"</strong> để AI đọc tệp bài làm của sinh viên, kiểm tra đúng/sai theo yêu cầu đề bài và gợi ý điểm số cho giảng viên.</p>
+                    <p><FiHelpCircle aria-hidden="true" /> Bấm nút <strong>"Đánh giá bài làm bằng AI"</strong> để AI đọc tệp bài làm của sinh viên, kiểm tra đúng/sai theo yêu cầu đề bài và gợi ý điểm số cho giảng viên.</p>
                   </div>
                 )}
               </div>

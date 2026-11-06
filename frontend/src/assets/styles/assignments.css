@@ -116,3 +116,34 @@
 .teacher-unsubmitted-icon { font-size: 26px; line-height: 1; flex-shrink: 0; }
 .teacher-unsubmitted-text h4 { margin: 0 0 5px; font-size: 14px; font-weight: 700; color: #9a3412; }
 .teacher-unsubmitted-text p { margin: 0; font-size: 12px; color: #7c2d12; line-height: 1.55; }
+
+/* Keep long assignment instructions readable in the grading header. */
+.teacher-grading-hero{display:block;padding:0;overflow:hidden;background:#fff;color:#24392d}
+.teacher-grading-hero-header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding:28px 32px;background:linear-gradient(120deg,#214332,#174c39);color:#fff}
+.teacher-grading-hero-heading{min-width:0}
+.teacher-grading-hero-content{padding:26px 32px 28px;background:#fff}
+.teacher-grading-hero-content h2{margin:0 0 14px;color:#214332;font-size:16px;line-height:1.4}
+.teacher-grading-hero-description{max-width:78ch;margin:0;color:#344b3d;font-size:15px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.teacher-grading-hero-resource{display:inline-block;margin-top:18px;color:#285e43;font-size:13px;font-weight:650;text-decoration:underline;text-underline-offset:3px}
+.teacher-grading-hero-meta{display:flex;flex-wrap:wrap;gap:16px 40px;padding:18px 32px;border-top:1px solid #e4ece5;background:#f7faf8;color:#24392d;font-size:14px}
+.teacher-grading-hero-meta span{display:grid;gap:5px}
+.teacher-grading-hero-meta strong{color:#687d6e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+@media(max-width:700px){.teacher-grading-hero-header{flex-direction:column;padding:22px 20px}.teacher-grading-hero-content{padding:22px 20px}.teacher-grading-hero-meta{padding:18px 20px}.teacher-grading-hero-description{font-size:14px}.teacher-grading-hero-actions{width:100%}}
+
+/* Consistent library icons in the grading workspace. */
+.assignment-back svg,.teacher-grading-hero-actions svg,.teacher-submission-file svg,.teacher-ai-eval-btn svg,.teacher-ai-apply-btn svg{flex:none;width:16px;height:16px}
+.teacher-grading-stepper button svg{width:16px;height:16px}
+.teacher-unsubmitted-icon svg{display:block;width:25px;height:25px}
+.teacher-ai-eval-header h5{display:flex;align-items:center;gap:7px}
+.teacher-ai-eval-header h5 svg{flex:none;width:16px;height:16px}
+.teacher-ai-loading p,.teacher-ai-failed p,.teacher-ai-unsupported p,.teacher-ai-hint p{display:block}
+.teacher-ai-loading p svg,.teacher-ai-failed p svg,.teacher-ai-unsupported p svg,.teacher-ai-hint p svg{width:16px;height:16px;margin-right:6px;vertical-align:-3px}
+
+/* Override the shared assignment button rules for AI grading actions. */
+.assignment-main .teacher-ai-eval-btn{min-height:42px;padding:9px 15px;border-color:#23523a;background:#23523a;color:#fff;font-size:13px;font-weight:700;white-space:normal;text-align:center}
+.assignment-main .teacher-ai-eval-btn:hover:not(:disabled){border-color:#183a29;background:#183a29;color:#fff}
+.assignment-main .teacher-ai-eval-btn:disabled{opacity:1;border-color:#b9d8c5;background:#dceee3;color:#24533a;cursor:progress}
+.assignment-main .teacher-ai-apply-btn{min-height:40px;padding:8px 14px;border-color:#286345;background:#fff;color:#205238;font-size:13px;font-weight:700;white-space:normal;text-align:center}
+.assignment-main .teacher-ai-apply-btn:hover{border-color:#286345;background:#e2f1e7;color:#174b30}
+.assignment-main .teacher-ai-eval-btn:focus-visible,.assignment-main .teacher-ai-apply-btn:focus-visible{outline:2px solid #174b30;outline-offset:3px}
+@media(max-width:560px){.teacher-ai-eval-header .teacher-ai-eval-btn,.teacher-ai-score-banner .teacher-ai-apply-btn{width:100%}}

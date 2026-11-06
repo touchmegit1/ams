@@ -8,6 +8,22 @@ const DEFAULT_ALLOWED_TYPES = ['PDF', 'DOC', 'DOCX', 'ZIP', 'TXT', 'PPTX', 'XLSX
 
 const formatDate = (value) => value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Chưa có hạn';
 
+const renderFeedbackInline = (line) => line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+  if (part.startsWith('**') && part.endsWith('**')) return <strong key={index}>{part.slice(2, -2)}</strong>;
+  if (part.startsWith('`') && part.endsWith('`')) return <code key={index}>{part.slice(1, -1)}</code>;
+  return part;
+});
+
+const renderFeedback = (feedback) => feedback.split(/\r?\n/).map((line, index) => {
+  const text = line.trim();
+  if (!text) return null;
+  const heading = text.match(/^#{1,4}\s+(.+)$/);
+  if (heading) return <h5 key={index}>{renderFeedbackInline(heading[1])}</h5>;
+  const listItem = text.match(/^([-*]|\d+[.)])\s+(.+)$/);
+  if (listItem) return <p className="sa-feedback-list-item" key={index}><span aria-hidden="true">{listItem[1]}</span><span>{renderFeedbackInline(listItem[2])}</span></p>;
+  return <p key={index}>{renderFeedbackInline(text)}</p>;
+});
+
 export default function StudentAssignments({ courseId = null }) {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -234,7 +250,15 @@ export default function StudentAssignments({ courseId = null }) {
             ) : (
               <section>
                 <h3>Bài làm</h3>
-                <p>Điểm tối đa: {selected.maxScore} · Định dạng cho phép: {allowedTypes.join(', ')}</p>
+                {isReviewed ? (
+                  <div className="sa-submitted-work">
+                    <p className="sa-work-hint">Bài nộp đã được chấm. Bạn có thể xem lại nội dung và nhận xét bên dưới.</p>
+                    {submissionText?.trim() && <div><h4>Nội dung đã nộp</h4><p>{submissionText}</p></div>}
+                    {submission?.fileName && <button type="button" className="sa-resource-link" onClick={downloadSubmission}><FiDownload aria-hidden="true" /> Tải bài đã nộp: {submission.fileName}</button>}
+                    {!submissionText?.trim() && !submission?.fileName && <p>Không có nội dung bài nộp để hiển thị.</p>}
+                  </div>
+                ) : <>
+                <p className="sa-work-hint">Điểm tối đa: {selected.maxScore} · Định dạng cho phép: {allowedTypes.join(', ')}</p>
                 <label className="sa-field">
                   Nội dung trả lời
                   <textarea
@@ -274,6 +298,7 @@ export default function StudentAssignments({ courseId = null }) {
                     </span>
                   )}
                 </label>
+                </>}
               </section>
             )}
 
@@ -313,7 +338,7 @@ export default function StudentAssignments({ courseId = null }) {
                     </div>
                     {submission.teacherFeedback ? (
                       <div className="sa-feedback-quote">
-                        {submission.teacherFeedback}
+                        {renderFeedback(submission.teacherFeedback)}
                       </div>
                     ) : (
                       <p className="sa-feedback-empty">Giảng viên không để lại nhận xét thêm cho bài làm này.</p>
