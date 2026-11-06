@@ -8,7 +8,7 @@ import { PageHeading, Field, Notice, ConfirmDialog, errorText } from '../../comp
 
 import QuestionEditor from '../../components/assignments/QuestionEditor.jsx';
 
-const initial = () => ({ assignmentType: 'DOCUMENT', questions: [], subjectId: '', templateId: '', title: '', description: '', dueDate: '', maxScore: 10, allowedFileTypes: ['PDF', 'DOC', 'DOCX', 'ZIP'], source: 'MANUAL', aiPrompt: '', rubric: [] });
+const initial = () => ({ assignmentType: 'DOCUMENT', questions: [], subjectId: '', templateId: '', title: '', description: '', resourceUrl: '', dueDate: '', maxScore: 10, allowedFileTypes: ['PDF', 'DOC', 'DOCX', 'ZIP'], source: 'MANUAL', aiPrompt: '', rubric: [] });
 function validate(form) {
   const errors = {};
   if (!form.subjectId) errors.subjectId = 'Vui lòng chọn môn học';
@@ -18,12 +18,19 @@ function validate(form) {
   if (!(Number(form.maxScore) > 0) || Number(form.maxScore) > 999.99 || !/^\d+(\.\d{1,2})?$/.test(String(form.maxScore))) errors.maxScore = 'Điểm từ 0.01 đến 999.99, tối đa 2 số thập phân';
   if (form.assignmentType === 'QUIZ' && (!form.questions?.length || form.questions.length > 100 || form.questions.some((q) => !q.text.trim() || q.options.length < 2 || q.options.some((o) => !o.trim()) || !q.correctAnswers.length || (q.type === 'SINGLE' && q.correctAnswers.length !== 1)))) errors.questions = 'Mỗi câu cần nội dung, ít nhất hai lựa chọn và đáp án đúng. Tối đa 100 câu.';
   if (form.assignmentType !== 'QUIZ' && !form.allowedFileTypes.length) errors.allowedFileTypes = 'Chọn ít nhất một định dạng nộp bài';
+  if (form.resourceUrl?.trim()) {
+    try {
+      const url = new URL(form.resourceUrl.trim());
+      if (!['http:', 'https:'].includes(url.protocol)) errors.resourceUrl = 'Link tài liệu phải bắt đầu bằng http:// hoặc https://';
+    } catch { errors.resourceUrl = 'Vui lòng nhập link tài liệu hợp lệ'; }
+  }
   return errors;
 }
 export default function AssignmentFormPage({ review = false }) {
   const { id } = useParams(), [query] = useSearchParams(), location = useLocation(), navigate = useNavigate();
   const resume = location.state?.form;
   const [form, setForm] = useState(resume || initial), [subjects, setSubjects] = useState([]), [templates, setTemplates] = useState([]);
+  const [resourceFile, setResourceFile] = useState(null), [savedId, setSavedId] = useState(id || null), [resourceFileName, setResourceFileName] = useState('');
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(''), [errors, setErrors] = useState({}), [error, setError] = useState('');
   const [saving, setSaving] = useState(false), [generating, setGenerating] = useState(false), [templateLoading, setTemplateLoading] = useState(false), [dirty, setDirty] = useState(Boolean(resume));
   const [topic, setTopic] = useState(location.state?.request?.topic || ''), [difficulty, setDifficulty] = useState(location.state?.request?.difficulty || 'Medium');
@@ -41,7 +48,7 @@ export default function AssignmentFormPage({ review = false }) {
         if (!resume && editId) {
           const item = await assignmentService.get(editId);
           if (!['DRAFT', 'PUBLISHED'].includes(item.status)) throw new Error('Chỉ sửa được bài nháp hoặc bài đang mở');
-          if (active) setForm({ ...initial(), ...item, templateId: item.templateId || '', dueDate: item.dueDate?.slice(0, 16) || '' });
+          if (active) { setForm({ ...initial(), ...item, templateId: item.templateId || '', dueDate: item.dueDate?.slice(0, 16) || '' }); setResourceFileName(item.resourceFileName || ''); }
         } else if (!resume && query.get('templateId')) {
           const item = await templateService.get(query.get('templateId'));
           if (active) { setForm((f) => ({ ...f, templateId: item.id, subjectId: item.subjectId || '', title: item.name, description: item.description, maxScore: item.defaultMaxScore, rubric: item.rubric, source: 'TEMPLATE' })); setDirty(true); }
@@ -68,7 +75,21 @@ export default function AssignmentFormPage({ review = false }) {
     setSaving(true);
     try {
       const payload = { ...form, assignmentType: form.assignmentType || 'DOCUMENT', questions: form.assignmentType === 'QUIZ' ? form.questions : [], allowedFileTypes: form.assignmentType === 'QUIZ' ? [] : form.allowedFileTypes, subjectId: Number(form.subjectId), templateId: form.templateId ? Number(form.templateId) : null, maxScore: Number(form.maxScore), dueDate: form.dueDate.length === 16 ? `${form.dueDate}:00` : form.dueDate, rubric: [] };
-      const saved = await assignmentService.save(editId, payload); setDirty(false); toast.success(editId ? 'Đã cập nhật bài tập' : 'Đã lưu bản nháp'); navigate(`/teacher/assignments/${saved.id}?subjectId=${form.subjectId}`);
+      const currentId = editId || savedId;
+      const saved = await assignmentService.save(currentId, payload);
+      setSavedId(saved.id);
+      if (resourceFile) {
+        try {
+          const uploaded = await assignmentService.uploadResourceFile(saved.id, resourceFile);
+          setResourceFileName(uploaded.resourceFileName);
+          setResourceFile(null);
+        } catch (uploadError) {
+          setErrors((current) => ({ ...current, resourceFile: errorText(uploadError) }));
+          toast.error('Bài tập đã được lưu, nhưng chưa tải lên được tệp tài liệu. Vui lòng thử lưu lại.');
+          return;
+        }
+      }
+      setDirty(false); toast.success(currentId ? 'Đã cập nhật bài tập' : 'Đã lưu bản nháp'); navigate(`/teacher/assignments/${saved.id}?subjectId=${form.subjectId}`);
     } catch (e) { setError(errorText(e)); setErrors(Object.fromEntries((e.response?.data?.errors || []).map((issue) => [issue.field, issue.message]))); }
     finally { setSaving(false); }
   };
@@ -147,10 +168,12 @@ export default function AssignmentFormPage({ review = false }) {
       <fieldset className="assignment-type-picker"><legend>Loại bài tập</legend><div className="assignment-type-options">{[['DOCUMENT', 'Bài tự luận / tài liệu', 'Sinh viên nộp tệp DOC, DOCX, PDF hoặc định dạng bạn chọn.'], ['QUIZ', 'Bài trắc nghiệm', 'Soạn câu hỏi với một hoặc nhiều đáp án đúng.']].map(([value, label, hint]) => <label key={value} className={(form.assignmentType || 'DOCUMENT') === value ? 'is-selected' : ''}><input type="radio" name="assignmentType" value={value} checked={(form.assignmentType || 'DOCUMENT') === value} onChange={() => update('assignmentType', value)} /><span><strong>{label}</strong><small>{hint}</small></span></label>)}</div></fieldset>
       <Field name="title" label="Tiêu đề *" errors={errors}><input id="title" value={form.title} maxLength={200} onChange={(e) => update('title', e.target.value)} placeholder="Ví dụ: Xây dựng REST API quản lý thư viện" /></Field>
       <Field name="description" label="Nội dung và yêu cầu *" errors={errors}><textarea id="description" rows={9} maxLength={8000} value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Mô tả yêu cầu, kết quả cần đạt và định dạng nộp bài…" /></Field>
+      <Field name="resourceUrl" label="Link tài liệu tham khảo (tùy chọn)" errors={errors}><input id="resourceUrl" type="url" maxLength={2048} value={form.resourceUrl || ''} onChange={(e) => update('resourceUrl', e.target.value)} placeholder="https://drive.google.com/..." /></Field>
+      <Field name="resourceFile" label="Hoặc tải tệp tài liệu lên (tùy chọn)" errors={errors}><input id="resourceFile" type="file" accept=".pdf,.doc,.docx,.zip,.txt,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(e) => { const file = e.target.files?.[0] || null; setErrors((current) => ({ ...current, resourceFile: undefined })); if (file && file.size > 100 * 1024 * 1024) { setResourceFile(null); e.target.value = ''; setErrors((current) => ({ ...current, resourceFile: 'Tệp tài liệu không được vượt quá 100 MB' })); return; } setResourceFile(file); setDirty(true); }} />{resourceFile ? <span>Đã chọn: {resourceFile.name}</span> : resourceFileName ? <span>Tệp đã tải lên: {resourceFileName}</span> : null}</Field>
       <div className="assignment-form-grid"><Field name="dueDate" label="Hạn nộp *" errors={errors}><input id="dueDate" type="datetime-local" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} /></Field><Field name="maxScore" label="Điểm tối đa *" errors={errors}><input id="maxScore" type="number" min="0.01" max="999.99" step="0.01" value={form.maxScore} onChange={(e) => update('maxScore', e.target.value)} /></Field></div>
       {form.assignmentType !== 'QUIZ' && <div className="assignment-field"><span>Định dạng được phép nộp</span><div className="assignment-file-types">{['PDF', 'DOC', 'DOCX', 'ZIP', 'TXT', 'PPTX', 'XLSX', 'PNG', 'JPG'].map((type) => <label key={type}><input type="checkbox" checked={form.allowedFileTypes.includes(type)} onChange={(e) => update('allowedFileTypes', e.target.checked ? [...form.allowedFileTypes, type] : form.allowedFileTypes.filter((v) => v !== type))} />{type}</label>)}</div><Notice error>{errors.allowedFileTypes}</Notice></div>}
       {form.assignmentType === 'QUIZ' && <><QuestionEditor value={form.questions || []} onChange={(value) => update('questions', value)} /><Notice error>{errors.questions || Object.entries(errors).filter(([k]) => k.startsWith('questions[')).map(([, v]) => v).join('; ')}</Notice></>}
-      <div className="assignment-actions assignment-footer-actions"><button type="submit" className="primary" disabled={!subjects.length}>{saving ? 'Đang lưu…' : editId ? 'Lưu thay đổi' : 'Lưu bản nháp'}</button><button type="button" onClick={() => dirty ? setAction({ type: 'cancel', message: 'Bạn có thay đổi chưa lưu. Rời khỏi biểu mẫu?' }) : navigate(returnToCourse)}>{review ? 'Bỏ đề AI' : 'Hủy & Quay lại'}</button></div>
+      <div className="assignment-actions assignment-footer-actions"><button type="submit" className="primary" disabled={!subjects.length}>{saving ? 'Đang lưu…' : editId || savedId ? 'Lưu thay đổi' : 'Lưu bản nháp'}</button><button type="button" onClick={() => dirty ? setAction({ type: 'cancel', message: 'Bạn có thay đổi chưa lưu. Rời khỏi biểu mẫu?' }) : navigate(returnToCourse)}>{review ? 'Bỏ đề AI' : 'Hủy & Quay lại'}</button></div>
       </fieldset>
     </form><aside className="assignment-card assignment-ai"><p className="assignment-eyebrow">TRỢ LÝ SOẠN ĐỀ</p><h2>{review ? 'Yêu cầu tạo đề' : 'Bắt đầu cùng AI'}</h2><p>Nhập mục tiêu học tập để AI gợi ý tiêu đề và nội dung bài tập.</p>
       <Field name="topic" label="Chủ đề / yêu cầu"><textarea id="topic" rows={6} maxLength={4000} value={topic} readOnly={review} disabled={disabled} onChange={(e) => setTopic(e.target.value)} placeholder="Sinh viên thực hành thiết kế API, xác thực và kiểm thử…" /></Field>

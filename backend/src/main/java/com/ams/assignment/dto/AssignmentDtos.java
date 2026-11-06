@@ -19,6 +19,7 @@ public final class AssignmentDtos {
     public record Write(@NotNull Integer subjectId, Integer templateId,
                         @NotBlank @Size(max=200) String title,
                         @NotBlank @Size(max=8000) String description,
+                        @Size(max=2048) String resourceUrl,
                         @NotNull @Future LocalDateTime dueDate,
                         @NotNull @DecimalMin("0.01") @DecimalMax("999.99") @Digits(integer=3, fraction=2) BigDecimal maxScore,
                         @NotNull @Size(max=10) List<@Pattern(regexp="PDF|DOC|DOCX|ZIP|TXT|PPTX|XLSX|PNG|JPG") String> allowedFileTypes,

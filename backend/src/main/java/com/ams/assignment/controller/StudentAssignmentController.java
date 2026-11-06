@@ -52,4 +52,12 @@ public class StudentAssignmentController {
             ContentDisposition.attachment().filename(file.originalName(), StandardCharsets.UTF_8).build().toString())
             .contentType(MediaType.APPLICATION_OCTET_STREAM).body(new FileSystemResource(file.path()));
     }
+
+    @GetMapping("/{id}/resource-file")
+    public ResponseEntity<FileSystemResource> resourceFile(@PathVariable Integer id, Authentication auth) {
+        var file = service.downloadResourceFile(id, auth);
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.attachment().filename(file.originalName(), StandardCharsets.UTF_8).build().toString())
+            .contentType(MediaType.APPLICATION_OCTET_STREAM).body(new FileSystemResource(file.path()));
+    }
 }

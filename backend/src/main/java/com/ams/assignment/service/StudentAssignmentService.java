@@ -12,6 +12,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
+import java.nio.file.Files;
+import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class StudentAssignmentService {
     private final EnrollmentRepository enrollments;
     private final AssignmentService assignmentService;
     private final com.ams.assignment.repository.SubmissionRepository submissions;
+    private final AssignmentResourceStorage resourceStorage;
 
     private int studentId(Authentication auth) { return Integer.parseInt(auth.getName()); }
 
@@ -59,6 +62,21 @@ public class StudentAssignmentService {
             view.put("submissionId", s.getSubmissionId());
         });
         return view;
+    }
+
+    public AssignmentResourceStorage.StoredFile downloadResourceFile(Integer id, Authentication auth) {
+        Assignment assignment = assignments.findById(id)
+            .orElseThrow(() -> new AssignmentException(404, "Không tìm thấy bài tập"));
+        if (assignment.getStatus() != Status.PUBLISHED && assignment.getStatus() != Status.CLOSED)
+            throw new AssignmentException(404, "Không tìm thấy bài tập");
+        if (!enrollments.existsByStudent_UserIdAndCourse_CourseIdAndStatus(
+                studentId(auth), assignment.getSubjectId(), EnrollmentStatus.ACTIVE))
+            throw new AssignmentException(403, "Bạn chưa có quyền học khóa này");
+        if (assignment.getResourceFileKey() == null || assignment.getResourceFileName() == null)
+            throw new AssignmentException(404, "Bài tập không có tệp tài liệu");
+        var path = resourceStorage.resolve(assignment.getResourceFileKey());
+        if (!Files.isRegularFile(path)) throw new AssignmentException(404, "Không tìm thấy tệp tài liệu");
+        return new AssignmentResourceStorage.StoredFile(assignment.getResourceFileKey(), assignment.getResourceFileName(), path);
     }
 
     private Map<String, Object> safeView(Assignment assignment) {

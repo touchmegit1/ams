@@ -6,6 +6,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 @RestController @RequestMapping("/api/assignments") @RequiredArgsConstructor
 public class AssignmentController {
@@ -14,6 +16,8 @@ public class AssignmentController {
     @GetMapping("/{id}") public Map<String,Object> detail(@PathVariable Integer id,Authentication auth) { return service.detail(id,auth); }
     @PostMapping @ResponseStatus(org.springframework.http.HttpStatus.CREATED) public Map<String,Object> create(@Valid @RequestBody Write body,Authentication auth) { return service.save(null,body,auth); }
     @PutMapping("/{id}") public Map<String,Object> edit(@PathVariable Integer id,@Valid @RequestBody Write body,Authentication auth) { return service.save(id,body,auth); }
+    @PostMapping(value="/{id}/resource-file", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String,Object> uploadResourceFile(@PathVariable Integer id, @RequestPart("file") MultipartFile file, Authentication auth) { return service.uploadResourceFile(id,file,auth); }
     @DeleteMapping("/{id}") @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT) public void delete(@PathVariable Integer id,Authentication auth) { service.delete(id,auth); }
     @PostMapping("/{id}/publish") public Map<String,Object> publish(@PathVariable Integer id,Authentication auth) { return service.transition(id,Status.PUBLISHED,auth); }
     @PostMapping("/{id}/close") public Map<String,Object> close(@PathVariable Integer id,Authentication auth) { return service.transition(id,Status.CLOSED,auth); }

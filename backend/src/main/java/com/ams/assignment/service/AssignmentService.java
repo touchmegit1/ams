@@ -16,7 +16,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -29,6 +32,7 @@ public class AssignmentService {
     private final UserRepository users;
     private final ObjectMapper json;
     private final JdbcTemplate jdbc;
+    private final AssignmentResourceStorage resourceStorage;
 
     private boolean admin(Authentication auth) { return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")); }
     private int userId(Authentication auth) { return Integer.parseInt(auth.getName()); }
@@ -82,7 +86,7 @@ public class AssignmentService {
         Map<String,Object> m=new LinkedHashMap<>();
         m.put("id",a.getId()); m.put("subjectId",a.getSubjectId()); m.put("subjectName",courses.findById(a.getSubjectId()).map(Course::getTitle).orElse("—"));
         m.put("assignmentType",a.getAssignmentType()==null ? "DOCUMENT" : a.getAssignmentType()); m.put("questions",questions(a.getQuestionsJson()));
-        m.put("title",a.getTitle()); m.put("description",a.getDescription()); m.put("rubric",rubric(a.getRubricJson()));
+        m.put("title",a.getTitle()); m.put("description",a.getDescription()); m.put("resourceUrl",a.getResourceUrl()); m.put("resourceFileName",a.getResourceFileName()); m.put("rubric",rubric(a.getRubricJson()));
         m.put("dueDate",a.getDueDate()); m.put("maxScore",a.getMaxScore()); m.put("source",a.getSource()); m.put("status",a.getStatus());
         m.put("templateId",a.getTemplateId()); m.put("templateName",a.getTemplateId()==null ? null : templates.findById(a.getTemplateId()).map(AssignmentTemplate::getName).orElse(null));
         List<String> fileTypes = "QUIZ".equals(a.getAssignmentType()) ? List.of()
@@ -141,6 +145,39 @@ public class AssignmentService {
             throw new AssignmentException(400,"Tổng trọng số rubric phải bằng 100%","rubric");
     }
     private String encode(Object value) { try { return json.writeValueAsString(value); } catch(Exception e) { throw new IllegalStateException("Cannot serialize assignment",e); } }
+    private String resourceUrl(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            URI uri = URI.create(value.trim());
+            String scheme = uri.getScheme();
+            if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+                || uri.getHost() == null || uri.getUserInfo() != null)
+                throw new IllegalArgumentException();
+            return uri.toASCIIString();
+        } catch (IllegalArgumentException e) {
+            throw new AssignmentException(400,"Link tài liệu phải là địa chỉ http:// hoặc https:// hợp lệ","resourceUrl");
+        }
+    }
+    @Transactional public Map<String,Object> uploadResourceFile(Integer id, MultipartFile file, Authentication auth) {
+        Assignment assignment = owned(id, auth);
+        if (assignment.getStatus() != Status.DRAFT && assignment.getStatus() != Status.PUBLISHED)
+            throw new AssignmentException(409, "Chỉ có thể thay đổi tệp tài liệu của bài nháp hoặc bài đang mở");
+        AssignmentResourceStorage.StoredFile stored;
+        try { stored = resourceStorage.store(file); }
+        catch (IllegalArgumentException e) { throw new AssignmentException(400, e.getMessage(), "resourceFile"); }
+        catch (IOException e) { throw new AssignmentException(500, "Không thể lưu tệp tài liệu"); }
+        String previousKey = assignment.getResourceFileKey();
+        assignment.setResourceFileKey(stored.key());
+        assignment.setResourceFileName(stored.originalName());
+        try {
+            assignments.saveAndFlush(assignment);
+            if (previousKey != null && !previousKey.equals(stored.key())) resourceStorage.delete(previousKey);
+        } catch (RuntimeException e) {
+            resourceStorage.delete(stored.key());
+            throw e;
+        }
+        return Map.of("resourceFileName", stored.originalName());
+    }
     @Transactional public Map<String,Object> save(Integer id,Write w,Authentication auth) {
         Assignment a=id==null ? new Assignment() : owned(id,auth);
         if(a.getStatus()!=Status.DRAFT && a.getStatus()!=Status.PUBLISHED) throw new AssignmentException(409,"Chỉ sửa được bài nháp hoặc bài đang mở");
@@ -158,6 +195,7 @@ public class AssignmentService {
         if(id==null) a.setCreatedBy(userId(auth));
         a.setSource(w.source()); a.setTemplateId(w.templateId()); a.setAiPrompt(w.aiPrompt());
         a.setSubjectId(w.subjectId()); a.setTitle(w.title().trim()); a.setDescription(w.description().trim());
+        a.setResourceUrl(resourceUrl(w.resourceUrl()));
         a.setDueDate(w.dueDate()); a.setMaxScore(w.maxScore()); a.setAllowedFileTypes(String.join(",",w.allowedFileTypes())); a.setRubricJson(encode(w.rubric()));
         assignments.saveAndFlush(a);
         if(id==null && a.getTemplateId()!=null) templates.incrementUsage(a.getTemplateId());

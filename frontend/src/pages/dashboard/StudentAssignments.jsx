@@ -142,6 +142,20 @@ export default function StudentAssignments({ courseId = null }) {
     }
   };
 
+  const downloadResourceFile = async () => {
+    try {
+      const { data } = await api.get(`/student/assignments/${selected.id}/resource-file`, { responseType: 'blob' });
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = selected.resourceFileName || 'tai-lieu';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Không thể tải tệp tài liệu. Vui lòng thử lại.');
+    }
+  };
+
   const visibleItems = filterAssignmentsByCourse(items, courseId);
 
   if (loading) return <p className="sa-message">Đang tải bài tập…</p>;
@@ -177,6 +191,23 @@ export default function StudentAssignments({ courseId = null }) {
             <h3>Yêu cầu bài tập</h3>
             <p className="sa-description">{selected.description}</p>
           </section>
+          {selected.resourceUrl && (
+            <section className="sa-resource-section">
+              <h3>Tài liệu tham khảo</h3>
+              <a className="sa-resource-link" href={selected.resourceUrl} target="_blank" rel="noopener noreferrer">
+                <FiDownload aria-hidden="true" /> Mở hoặc tải tài liệu
+              </a>
+              <p>Mở liên kết để xem tài liệu hoặc tải xuống từ nơi lưu trữ.</p>
+            </section>
+          )}
+          {selected.resourceFileName && (
+            <section className="sa-resource-section">
+              <h3>Tệp tài liệu</h3>
+              <button className="sa-resource-link" type="button" onClick={downloadResourceFile}>
+                <FiDownload aria-hidden="true" /> Tải xuống {selected.resourceFileName}
+              </button>
+            </section>
+          )}
           <form className="sa-submit-form" onSubmit={saveSubmission}>
             {selected.assignmentType === 'QUIZ' ? (
               <section>

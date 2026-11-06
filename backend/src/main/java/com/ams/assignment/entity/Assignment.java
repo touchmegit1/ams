@@ -14,6 +14,9 @@ public class Assignment {
     @Column(name = "course_id", nullable = false) private Integer subjectId;
     @Column(nullable = false, length = 200) private String title;
     @Column(nullable = false, columnDefinition = "TEXT") private String description;
+    @Column(name = "resource_url", length = 2048) private String resourceUrl;
+    @Column(name = "resource_file_key", length = 80) private String resourceFileKey;
+    @Column(name = "resource_file_name", length = 255) private String resourceFileName;
     @Column(name = "grading_rubric", nullable = false, columnDefinition = "TEXT") private String rubricJson;
     @Column(name = "allowed_file_types", length = 100) private String allowedFileTypes;
     @Column(name = "max_score", precision = 5, scale = 2) private BigDecimal maxScore;
